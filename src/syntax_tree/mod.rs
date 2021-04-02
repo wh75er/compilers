@@ -1,4 +1,5 @@
 pub mod parser;
+mod utils;
 
 #[derive(Debug)]
 pub struct SyntaxTree {
@@ -51,6 +52,7 @@ impl Operations {
         }
     }
 
+    #[allow(dead_code)]
     fn from_string(s: &str) -> Option<Operations> {
         match s {
             "|" => Some(Operations::OR),
