@@ -166,6 +166,7 @@ fn extend_concat_op(regex: &String) -> String {
                     Some(v) => match v {
                         Operations::TERMINATOR => result += Operations::CONCAT.as_string(),
                         Operations::LBRACKET => result += Operations::CONCAT.as_string(),
+                        Operations::ESCAPE => result += Operations::CONCAT.as_string(),
                         _ => ()
                     },
                     None => result += Operations::CONCAT.as_string()
