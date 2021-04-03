@@ -64,7 +64,7 @@ impl Operations {
         }
     }
 
-    fn as_string(&self) -> &'static str {
+    pub fn as_string(&self) -> &'static str {
         match self {
             Operations::OR => "|",
             Operations::REPETITION => "*",

@@ -1,6 +1,4 @@
-use super::{
-    Operations,
-};
+use super::Operations;
 
 use std::error;
 
@@ -14,7 +12,7 @@ pub fn extend_concat_op(regex: &String) -> String {
     let mut escape = false;
 
     for (i, c) in regex_chars.iter().enumerate() {
-        let next_char = regex_chars.get(i+1);
+        let next_char = regex_chars.get(i + 1);
 
         result += &c.to_string();
 
@@ -27,15 +25,17 @@ pub fn extend_concat_op(regex: &String) -> String {
         match Operations::from_char(c) {
             Some(v) => match v {
                 Operations::REPETITION => {
-                    if next_char.map(|v| v.to_string()) != Some(Operations::RBRACKET.as_string().to_string()) {
+                    if next_char.map(|v| v.to_string())
+                        != Some(Operations::RBRACKET.as_string().to_string())
+                    {
                         result += Operations::CONCAT.as_string()
                     }
-                },
+                }
                 Operations::ESCAPE => {
                     escape = true;
                     continue;
-                },
-                _ => ()
+                }
+                _ => (),
             },
             None => match next_char {
                 Some(v) => match Operations::from_char(v) {
@@ -43,12 +43,12 @@ pub fn extend_concat_op(regex: &String) -> String {
                         Operations::TERMINATOR => result += Operations::CONCAT.as_string(),
                         Operations::LBRACKET => result += Operations::CONCAT.as_string(),
                         Operations::ESCAPE => result += Operations::CONCAT.as_string(),
-                        _ => ()
+                        _ => (),
                     },
-                    None => result += Operations::CONCAT.as_string()
+                    None => result += Operations::CONCAT.as_string(),
                 },
-                None => ()
-            }
+                None => (),
+            },
         }
     }
 
@@ -56,19 +56,19 @@ pub fn extend_concat_op(regex: &String) -> String {
 }
 
 fn validate_forbidden_chars(regex: &String) -> Result<(), Box<dyn error::Error>> {
-    let forbidden_symbols = vec!{
+    let forbidden_symbols = vec![
         Operations::CONCAT.as_string(),
-        Operations::TERMINATOR.as_string()
-    };
+        Operations::TERMINATOR.as_string(),
+    ];
 
     for c in forbidden_symbols.iter() {
         let escaped_pattern = Operations::ESCAPE.as_string().to_string() + c;
 
         let escaped = regex.matches(c).count() == regex.matches(&escaped_pattern).count();
 
-        if Operations::from_string(c) == Some(Operations::TERMINATOR) &&
-            regex.find(c).is_some() || !escaped {
-
+        if Operations::from_string(c) == Some(Operations::TERMINATOR) && regex.find(c).is_some()
+            || !escaped
+        {
             return Err((String::from("Symbol ") + *c + " is not allowed").into());
         }
     }
@@ -77,10 +77,10 @@ fn validate_forbidden_chars(regex: &String) -> Result<(), Box<dyn error::Error>>
 }
 
 fn validate_repeated_op(regex: &String) -> Result<(), Box<dyn error::Error>> {
-    let operations = vec!{
+    let operations = vec![
         Operations::REPETITION.as_string(),
         Operations::OR.as_string(),
-    };
+    ];
 
     for op in operations.iter() {
         let repeated_pattern = op.to_string() + op;

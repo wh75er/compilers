@@ -1,10 +1,4 @@
-use super::{
-    SyntaxTree,
-    Operations,
-    GrammarType,
-    utils::extend_concat_op,
-    utils::validate_regex,
-};
+use super::{utils::extend_concat_op, utils::validate_regex, GrammarType, Operations, SyntaxTree};
 
 use std::error;
 use std::iter::Peekable;
@@ -28,7 +22,7 @@ impl Parser<'_> {
                 node.entry = GrammarType::OPERATION(Operations::OR);
                 node.right = Some(self.regex());
                 node
-            },
+            }
             _ => inner_node,
         }
     }
@@ -46,8 +40,8 @@ impl Parser<'_> {
                 node.entry = GrammarType::OPERATION(Operations::CONCAT);
                 node.right = Some(self.concat());
                 node
-            },
-            _ => inner_node
+            }
+            _ => inner_node,
         }
     }
 
@@ -64,7 +58,7 @@ impl Parser<'_> {
                 node.entry = GrammarType::OPERATION(Operations::REPETITION);
                 node
             }
-            _ => inner_node
+            _ => inner_node,
         }
     }
 
@@ -79,13 +73,13 @@ impl Parser<'_> {
                 node.entry = GrammarType::CHAR(self.expr.peek().unwrap().to_string());
                 self.expr.next();
                 node
-            },
+            }
             Some(Operations::LBRACKET) => {
                 self.expr.next();
                 node = self.regex();
                 self.expr.next();
                 node
-            },
+            }
             _ => {
                 node.entry = GrammarType::CHAR(self.expr.peek().unwrap().to_string());
                 self.expr.next();
@@ -100,14 +94,17 @@ pub fn parse<'a>(regex: &'a String) -> Result<Box<SyntaxTree>, Box<dyn error::Er
 
     let regex = extend_concat_op(regex);
 
+    #[cfg(debug_assertions)]
     println!("Extended regex: {}", regex);
 
-    let mut parser = Parser{expr: &mut regex.chars().peekable()};
+    let mut parser = Parser {
+        expr: &mut regex.chars().peekable(),
+    };
 
     let syntax_tree = parser.regex();
 
+    #[cfg(debug_assertions)]
     println!("Parsed expression: {:#?}", syntax_tree);
 
     Ok(syntax_tree)
 }
-
