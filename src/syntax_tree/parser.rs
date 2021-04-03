@@ -16,7 +16,7 @@ struct Parser<'a> {
 
 impl Parser<'_> {
     fn regex(&mut self) -> Box<SyntaxTree> {
-        let inner_node = self.term();
+        let inner_node = self.concat();
 
         let c = self.expr.peek();
 
@@ -30,24 +30,6 @@ impl Parser<'_> {
                 node
             },
             _ => inner_node,
-        }
-    }
-
-    fn term(&mut self) -> Box<SyntaxTree> {
-        let inner_node = self.concat();
-
-        let c = self.expr.peek();
-
-        match c.and_then(Operations::from_char) {
-            Some(Operations::AND) => {
-                self.expr.next();
-                let mut node = Box::new(SyntaxTree::new_node());
-                node.left = Some(inner_node);
-                node.entry = GrammarType::OPERATION(Operations::AND);
-                node.right = Some(self.term());
-                node
-            },
-            _ => inner_node
         }
     }
 

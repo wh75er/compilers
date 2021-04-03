@@ -80,7 +80,6 @@ fn validate_repeated_op(regex: &String) -> Result<(), Box<dyn error::Error>> {
     let operations = vec!{
         Operations::REPETITION.as_string(),
         Operations::OR.as_string(),
-        Operations::AND.as_string(),
     };
 
     for op in operations.iter() {

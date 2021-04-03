@@ -3,8 +3,7 @@
 This program is parsing basic regex and transforming it into Deterministic Finite Automaton. Parser is a recursive-descent parser with the following grammars:
 
 ```
-regex ::= <term> '|' <regex> | <term>
-term ::= <concat> '&' <term> | <concat>
+regex ::= <concat> '|' <regex> | <concat>
 concat ::= <factor> '.' <concat> | <factor>
 factor ::= <base> '*' | <base>
 base ::= <char> | '\' <char> | '(' regex ')'

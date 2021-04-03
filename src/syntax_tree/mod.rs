@@ -18,7 +18,6 @@ pub enum GrammarType {
 #[derive(Debug, PartialEq)]
 pub enum Operations {
     OR,
-    AND,
     REPETITION,
     CONCAT,
     LBRACKET,
@@ -41,7 +40,6 @@ impl Operations {
     fn from_char(c: &char) -> Option<Operations> {
         match c {
             '|' => Some(Operations::OR),
-            '&' => Some(Operations::AND),
             '*' => Some(Operations::REPETITION),
             '.' => Some(Operations::CONCAT),
             '(' => Some(Operations::LBRACKET),
@@ -56,7 +54,6 @@ impl Operations {
     fn from_string(s: &str) -> Option<Operations> {
         match s {
             "|" => Some(Operations::OR),
-            "&" => Some(Operations::AND),
             "*" => Some(Operations::REPETITION),
             "." => Some(Operations::CONCAT),
             "(" => Some(Operations::LBRACKET),
@@ -70,7 +67,6 @@ impl Operations {
     fn as_string(&self) -> &'static str {
         match self {
             Operations::OR => "|",
-            Operations::AND => "&",
             Operations::REPETITION => "*",
             Operations::CONCAT => ".",
             Operations::LBRACKET => "(",
