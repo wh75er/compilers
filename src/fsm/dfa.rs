@@ -1,6 +1,6 @@
-use super::{Dfa, NodeWrapper, SyntaxTree};
+use super::{Dfa, NodeWrapper, SyntaxTree, Operations};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub fn transform(root: Box<SyntaxTree>) -> Dfa {
     let mut wrapper = NodeWrapper::new(&root);
@@ -12,12 +12,12 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
 
     let mut dfa = Dfa {
         alphabet,
-        states: vec![],
-        trans: vec![],
+        states: vec!(),
+        trans: vec!(),
+        is_terminal: HashSet::new(),
     };
 
-    dfa.states.push(follow_pos[0].clone());
-    dfa.trans.push(vec![0; dfa.alphabet.len()]);
+    dfa.add_state(&follow_pos[0].clone(), false);
 
     let mut row = 0;
 
@@ -25,14 +25,14 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
         for col in 0..dfa.alphabet.len() {
             let curr_char = &dfa.alphabet[col];
             let curr_state = &dfa.states[row];
-            let new_state = form_state(curr_char, curr_state, &follow_pos, &leaf_chars);
+            let (new_state, is_terminal) = form_state(curr_char, curr_state, &follow_pos, &leaf_chars);
             match match_state(&dfa.states, &new_state) {
                 Some(v) => {
-                    dfa.trans[row][col] = v as i32;
+                    dfa.trans[row][col] = v;
                 }
                 _ => {
-                    dfa.add_state(&new_state);
-                    dfa.trans[row][col] = dfa.states.len() as i32 - 1;
+                    dfa.add_state(&new_state, is_terminal);
+                    dfa.trans[row][col] = dfa.states.len() - 1;
                 }
             }
         }
@@ -45,10 +45,10 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
 
 fn form_state(
     curr_char: &str,
-    curr_state: &Vec<i32>,
-    follow_pos: &Vec<Vec<i32>>,
-    leaf_chars: &HashMap<i32, String>,
-) -> Vec<i32> {
+    curr_state: &Vec<usize>,
+    follow_pos: &Vec<Vec<usize>>,
+    leaf_chars: &HashMap<usize, String>,
+) -> (Vec<usize>, bool) {
     let mut result = vec![];
 
     for state_value in curr_state.iter() {
@@ -60,10 +60,16 @@ fn form_state(
         }
     }
 
-    result
+    let mut is_terminal = false;
+
+    if result.contains(&leaf_chars.len()) {
+        is_terminal = true;
+    }
+
+    (result, is_terminal)
 }
 
-fn match_state(states: &Vec<Vec<i32>>, new_state: &Vec<i32>) -> Option<usize> {
+fn match_state(states: &Vec<Vec<usize>>, new_state: &Vec<usize>) -> Option<usize> {
     for (i, state) in states.iter().enumerate() {
         if state.len() == new_state.len() && state.iter().zip(new_state).all(|(a, b)| a == b) {
             return Some(i);

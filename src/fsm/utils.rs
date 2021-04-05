@@ -12,7 +12,7 @@ where
     }
 }
 
-pub fn calculate_first_last_pos(root: &mut NodeWrapper) -> (Vec<i32>, Vec<i32>) {
+pub fn calculate_first_last_pos(root: &mut NodeWrapper) -> (Vec<usize>, Vec<usize>) {
     if root.left.is_some() || root.right.is_some() {
         return match &root.node.entry {
             GrammarType::OPERATION(Operations::OR) => {
@@ -81,14 +81,14 @@ pub fn calculate_first_last_pos(root: &mut NodeWrapper) -> (Vec<i32>, Vec<i32>) 
     }
 }
 
-pub fn generate_follow_pos(root: &NodeWrapper, follow_pos: &mut Vec<Vec<i32>>) {
+pub fn generate_follow_pos(root: &NodeWrapper, follow_pos: &mut Vec<Vec<usize>>) {
     match root.node.entry {
         GrammarType::OPERATION(Operations::CONCAT) => {
             let l_last_pos = root.left.as_ref().map_or(vec![], |v| v.last_pos.clone());
             let r_first_pos = root.right.as_ref().map_or(vec![], |v| v.first_pos.clone());
 
             for v in l_last_pos.iter() {
-                follow_pos[*v as usize].extend_from_slice(&r_first_pos);
+                follow_pos[*v].extend_from_slice(&r_first_pos);
             }
 
             root.left
@@ -100,7 +100,7 @@ pub fn generate_follow_pos(root: &NodeWrapper, follow_pos: &mut Vec<Vec<i32>>) {
         }
         GrammarType::OPERATION(Operations::REPETITION) => {
             for v in root.last_pos.iter() {
-                follow_pos[*v as usize].extend_from_slice(&root.first_pos);
+                follow_pos[*v].extend_from_slice(&root.first_pos);
             }
 
             root.left

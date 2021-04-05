@@ -1,9 +1,10 @@
 pub mod dfa;
+pub mod dfa_minimization;
 pub mod utils;
 
 use crate::syntax_tree::{GrammarType, Operations, SyntaxTree};
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use utils::{calculate_first_last_pos, generate_follow_pos, map_leaf};
 
 #[derive(Debug)]
@@ -11,23 +12,28 @@ pub struct NodeWrapper<'a> {
     pub node: &'a Box<SyntaxTree>,
     pub left: Option<Box<NodeWrapper<'a>>>,
     pub right: Option<Box<NodeWrapper<'a>>>,
-    pub leaf_index: Option<i32>,
+    pub leaf_index: Option<usize>,
     pub nullable: bool,
-    pub first_pos: Vec<i32>,
-    pub last_pos: Vec<i32>,
+    pub first_pos: Vec<usize>,
+    pub last_pos: Vec<usize>,
 }
 
 #[derive(Debug)]
 pub struct Dfa {
     pub alphabet: Vec<String>,
-    pub states: Vec<Vec<i32>>,
-    pub trans: Vec<Vec<i32>>,
+    pub states: Vec<Vec<usize>>,
+    pub trans: Vec<Vec<usize>>,
+    pub is_terminal: HashSet<usize>,
 }
 
 impl Dfa {
-    fn add_state(&mut self, new_state: &Vec<i32>) {
+    fn add_state(&mut self, new_state: &Vec<usize>, is_terminal: bool) {
         self.states.push(new_state.clone());
-        self.trans.push(vec![0; self.alphabet.len()])
+        self.trans.push(vec![0; self.alphabet.len()]);
+
+        if is_terminal {
+            self.is_terminal.insert(self.states.len() - 1);
+        }
     }
 }
 
@@ -71,18 +77,18 @@ impl NodeWrapper<'_> {
         calculate_first_last_pos(self);
     }
 
-    fn gen_follow_pos(&self, size: usize) -> Vec<Vec<i32>> {
-        let mut follow_pos = vec![Vec::<i32>::new(); size];
+    fn gen_follow_pos(&self, size: usize) -> Vec<Vec<usize>> {
+        let mut follow_pos = vec![Vec::<usize>::new(); size];
 
         generate_follow_pos(self, &mut follow_pos);
 
         follow_pos
     }
 
-    fn numerate_leaves(&mut self) -> (Vec<String>, HashMap<i32, String>) {
+    fn numerate_leaves(&mut self) -> (Vec<String>, HashMap<usize, String>) {
         let mut leaf_counter = 0;
         let mut alphabet = vec![];
-        let mut leaf_chars: HashMap<i32, String> = HashMap::new();
+        let mut leaf_chars: HashMap<usize, String> = HashMap::new();
 
         map_leaf(self, &mut |v: &mut NodeWrapper| {
             v.leaf_index = Some(leaf_counter);
