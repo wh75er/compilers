@@ -1,10 +1,12 @@
 pub mod dfa;
 pub mod dfa_minimization;
+mod draw;
 pub mod utils;
 
 use crate::syntax_tree::{GrammarType, Operations, SyntaxTree};
 
 use std::collections::{HashMap, HashSet};
+use std::fs::File;
 use utils::{calculate_first_last_pos, generate_follow_pos, map_leaf};
 
 #[derive(Debug)]
@@ -34,6 +36,11 @@ impl Dfa {
         if is_terminal {
             self.is_terminal.insert(self.states.len() - 1);
         }
+    }
+
+    pub fn render_to(&self, output: &str) {
+        let mut f = File::create(output).unwrap();
+        dot::render(self, &mut f).unwrap()
     }
 }
 

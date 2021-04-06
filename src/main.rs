@@ -1,5 +1,6 @@
 mod fsm;
 mod syntax_tree;
+mod draw;
 
 use structopt::StructOpt;
 
@@ -23,7 +24,11 @@ fn main() {
 
     println!("Dfa: {:#?}", dfa);
 
+    dfa.render_to("dfa.dot");
+
     let minimized_dfa = fsm::dfa_minimization::minimize(&dfa);
 
     println!("Minimized dfa: {:#?}", minimized_dfa);
+
+    minimized_dfa.render_to("min_dfa.dot");
 }
