@@ -22,4 +22,8 @@ fn main() {
     let dfa = fsm::dfa::transform(result.unwrap());
 
     println!("Dfa: {:#?}", dfa);
+
+    let minimized_dfa = fsm::dfa_minimization::minimize(&dfa);
+
+    println!("Minimized dfa: {:#?}", minimized_dfa);
 }

@@ -1,4 +1,4 @@
-use super::{Dfa, NodeWrapper, SyntaxTree, Operations};
+use super::{Dfa, NodeWrapper, SyntaxTree};
 
 use std::collections::{HashMap, HashSet};
 
@@ -12,8 +12,8 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
 
     let mut dfa = Dfa {
         alphabet,
-        states: vec!(),
-        trans: vec!(),
+        states: vec![],
+        trans: vec![],
         is_terminal: HashSet::new(),
     };
 
@@ -25,7 +25,8 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
         for col in 0..dfa.alphabet.len() {
             let curr_char = &dfa.alphabet[col];
             let curr_state = &dfa.states[row];
-            let (new_state, is_terminal) = form_state(curr_char, curr_state, &follow_pos, &leaf_chars);
+            let (new_state, is_terminal) =
+                form_state(curr_char, curr_state, &follow_pos, &leaf_chars);
             match match_state(&dfa.states, &new_state) {
                 Some(v) => {
                     dfa.trans[row][col] = v;
