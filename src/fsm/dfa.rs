@@ -10,7 +10,9 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
     wrapper.calc_first_last_pos();
     let follow_pos = wrapper.gen_follow_pos(leaf_chars.len() + 1);
 
+    #[cfg(debug_assertions)]
     println!("wrapper : {:#?}", wrapper);
+    #[cfg(debug_assertions)]
     println!("follow pos : {:#?}", follow_pos);
 
     let mut dfa = Dfa {
@@ -87,10 +89,8 @@ fn match_state(states: &Vec<Vec<usize>>, new_state: &Vec<usize>) -> Option<usize
         a_vec.sort();
 
         if a_vec.len() == b_vec.len() && a_vec.iter().zip(&b_vec).all(|(a, b)| a == b) {
-            println!("vec {:?} equals {:?}", state, new_state);
             return Some(i);
         }
-        println!("vec {:?} not equals {:?}", state, new_state);
     }
 
     None
