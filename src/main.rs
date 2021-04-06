@@ -1,6 +1,5 @@
 mod fsm;
 mod syntax_tree;
-mod draw;
 
 use structopt::StructOpt;
 
