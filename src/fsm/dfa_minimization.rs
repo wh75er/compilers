@@ -43,9 +43,12 @@ fn build_dfa(a: &Dfa, components: &Vec<i32>) -> Dfa {
             } else {
                 new_dfa.states.push(vec![*v as usize]);
 
-                let mut new_state_trans: Vec<usize> = vec![];
+                let mut new_state_trans: Vec<Option<usize>> = vec![];
                 a.trans[i].iter().for_each(|old_state| {
-                    new_state_trans.push(components[*old_state] as usize);
+                    match old_state {
+                        Some(old_state) => new_state_trans.push(Some(components[*old_state] as usize)),
+                        _ => (),
+                    }
                 });
 
                 new_dfa.trans.push(new_state_trans);
@@ -97,12 +100,15 @@ fn get_reverse_trans(a: &Dfa) -> HashMap<usize, Vec<Vec<usize>>> {
 
     for (state, to_state) in a.trans.iter().enumerate() {
         for (i, _) in a.alphabet.iter().enumerate() {
-            if let Some(v) = rev_trans.get_mut(&(to_state[i] + 1)) {
+            if to_state[i].is_none() {
+                continue
+            }
+            if let Some(v) = rev_trans.get_mut(&(to_state[i].unwrap() + 1)) {
                 v[i].push(state + 1);
             } else {
                 let mut new_vec = vec![vec!(); a.alphabet.len()];
                 new_vec[i].push(state + 1);
-                rev_trans.insert(to_state[i] + 1, new_vec);
+                rev_trans.insert(to_state[i].unwrap() + 1, new_vec);
             }
         }
     }
@@ -137,8 +143,8 @@ fn find_reachable(a: &Dfa) -> Vec<bool> {
         visited.insert(v);
 
         for state in a.trans[v].iter() {
-            if !visited.contains(&state) {
-                stack.push(*state);
+            if state.is_some() && !visited.contains(&state.unwrap()) {
+                stack.push(state.unwrap());
             }
         }
     }

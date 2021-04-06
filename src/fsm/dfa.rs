@@ -10,6 +10,9 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
     wrapper.calc_first_last_pos();
     let follow_pos = wrapper.gen_follow_pos(leaf_chars.len() + 1);
 
+    println!("wrapper : {:#?}", wrapper);
+    println!("follow pos : {:#?}", follow_pos);
+
     let mut dfa = Dfa {
         alphabet,
         states: vec![],
@@ -29,11 +32,14 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
                 form_state(curr_char, curr_state, &follow_pos, &leaf_chars);
             match match_state(&dfa.states, &new_state) {
                 Some(v) => {
-                    dfa.trans[row][col] = v;
+                    dfa.trans[row][col] = Some(v);
                 }
                 _ => {
+                    if new_state.is_empty() {
+                        continue;
+                    }
                     dfa.add_state(&new_state, is_terminal);
-                    dfa.trans[row][col] = dfa.states.len() - 1;
+                    dfa.trans[row][col] = Some(dfa.states.len() - 1);
                 }
             }
         }
@@ -58,6 +64,8 @@ fn form_state(
             .map_or(false, |v| v == curr_char)
         {
             result.extend_from_slice(&follow_pos[*state_value as usize]);
+            result.sort();
+            result.dedup();
         }
     }
 
@@ -71,10 +79,18 @@ fn form_state(
 }
 
 fn match_state(states: &Vec<Vec<usize>>, new_state: &Vec<usize>) -> Option<usize> {
+    let mut b_vec = new_state.clone();
+    b_vec.sort();
+
     for (i, state) in states.iter().enumerate() {
-        if state.len() == new_state.len() && state.iter().zip(new_state).all(|(a, b)| a == b) {
+        let mut a_vec = state.clone();
+        a_vec.sort();
+
+        if a_vec.len() == b_vec.len() && a_vec.iter().zip(&b_vec).all(|(a, b)| a == b) {
+            println!("vec {:?} equals {:?}", state, new_state);
             return Some(i);
         }
+        println!("vec {:?} not equals {:?}", state, new_state);
     }
 
     None

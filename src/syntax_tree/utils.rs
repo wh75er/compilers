@@ -35,6 +35,13 @@ pub fn extend_concat_op(regex: &String) -> String {
                     escape = true;
                     continue;
                 }
+                Operations::RBRACKET => match Operations::from_char(next_char.unwrap_or(&'_')) {
+                    Some(Operations::LBRACKET) => result += Operations::CONCAT.as_string(),
+                    Some(Operations::ESCAPE) => result += Operations::CONCAT.as_string(),
+                    Some(Operations::TERMINATOR) => result += Operations::CONCAT.as_string(),
+                    None => result += Operations::CONCAT.as_string(),
+                    _ => (),
+                }
                 _ => (),
             },
             None => match next_char {

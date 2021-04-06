@@ -24,14 +24,14 @@ pub struct NodeWrapper<'a> {
 pub struct Dfa {
     pub alphabet: Vec<String>,
     pub states: Vec<Vec<usize>>,
-    pub trans: Vec<Vec<usize>>,
+    pub trans: Vec<Vec<Option<usize>>>,
     pub is_terminal: HashSet<usize>,
 }
 
 impl Dfa {
     fn add_state(&mut self, new_state: &Vec<usize>, is_terminal: bool) {
         self.states.push(new_state.clone());
-        self.trans.push(vec![0; self.alphabet.len()]);
+        self.trans.push(vec![None; self.alphabet.len()]);
 
         if is_terminal {
             self.is_terminal.insert(self.states.len() - 1);

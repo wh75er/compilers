@@ -40,7 +40,10 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed> for Dfa {
 
         self.trans.iter().enumerate().for_each(|(state, to_states)| {
             to_states.iter().enumerate().for_each(|(c, to_state)| {
-                edges.push((state, *to_state, self.alphabet[c].clone()));
+                match to_state {
+                    Some(to_state) => edges.push((state, *to_state, self.alphabet[c].clone())),
+                    _ => (),
+                }
             })
         });
 
