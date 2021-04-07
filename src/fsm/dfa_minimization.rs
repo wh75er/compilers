@@ -47,7 +47,7 @@ fn build_dfa(a: &Dfa, components: &Vec<i32>) -> Dfa {
                 a.trans[i].iter().for_each(|old_state| {
                     match old_state {
                         Some(old_state) => new_state_trans.push(Some(components[*old_state] as usize)),
-                        _ => (),
+                        _ => new_state_trans.push(None),
                     }
                 });
 

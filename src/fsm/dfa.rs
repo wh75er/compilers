@@ -22,7 +22,7 @@ pub fn transform(root: Box<SyntaxTree>) -> Dfa {
         is_terminal: HashSet::new(),
     };
 
-    dfa.add_state(&follow_pos[0].clone(), false);
+    dfa.add_state(&follow_pos[0].clone(), follow_pos[0].contains(&leaf_chars.len()));
 
     let mut row = 0;
 

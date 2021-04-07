@@ -110,6 +110,14 @@ pub fn generate_follow_pos(root: &NodeWrapper, follow_pos: &mut Vec<Vec<usize>>)
                 .as_ref()
                 .map(|v| generate_follow_pos(v, follow_pos));
         }
+        GrammarType::OPERATION(_) => {
+            root.left
+                .as_ref()
+                .map(|v| generate_follow_pos(v, follow_pos));
+            root.right
+                .as_ref()
+                .map(|v| generate_follow_pos(v, follow_pos));
+        }
         _ => (),
     }
 }
