@@ -1,6 +1,6 @@
 # Basic regex parser
 
-This program is parsing basic regex and transforming it into Deterministic Finite Automaton. Parser is a recursive-descent parser with the following grammars:
+This program is parsing basic regex and transforming it into Deterministic Finite Automaton. Parser is a recursive-descent parser with the following grammar:
 
 ```
 regex ::= <concat> '|' <regex> | <concat>
