@@ -46,13 +46,13 @@ impl Grammar {
         non_terms: &HashSet<String>,
         terms: &HashSet<String>,
         prods: &Vec<Production>,
-        start: String,
+        start: &str,
     ) -> Grammar {
         Grammar {
             non_terms: non_terms.clone(),
             terms: terms.clone(),
             productions: prods.to_vec(),
-            start,
+            start: start.to_string(),
         }
     }
 }

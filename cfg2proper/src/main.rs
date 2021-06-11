@@ -52,7 +52,7 @@ fn main() {
     terms.insert(String::from(')'));
     terms.insert(String::from('a'));
 
-    let g = grammar::Grammar::new(&non_terms, &terms, &prods, String::from('E'));
+    let g = grammar::Grammar::new(&non_terms, &terms, &prods, "E");
 
     println!("Init grammar {:?}", g);
 }
