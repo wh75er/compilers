@@ -2,10 +2,10 @@ mod transformations;
 
 use std::collections::HashSet;
 
-const EPSILON_SYMBOL: &str = "&";
+pub const EPSILON_SYMBOL: &str = "&";
 const NEW_START: &str = "$";
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SymbolsKind {
     TERM,
     NONTERM,
@@ -43,17 +43,17 @@ impl Grammar {
     /// * `non_terms` - Non-terminal symbols represented by String
     ///
     /// * `terms` - Terminal symbols represented by String
-    pub fn new(
-        non_terms: &HashSet<String>,
-        terms: &HashSet<String>,
+    pub fn new<T: ToString>(
+        non_terms: &HashSet<T>,
+        terms: &HashSet<T>,
         prods: &Vec<Production>,
-        start: &str,
+        start: T,
     ) -> Grammar {
         Grammar {
-            non_terms: non_terms.clone(),
-            terms: terms.clone(),
+            non_terms: non_terms.iter().map(|s| s.to_string()).collect(),
+            terms: terms.iter().map(|s| s.to_string()).collect(),
             productions: prods.to_vec(),
-            start: start.to_string(),
+            start: start.to_string()
         }
     }
 }
@@ -65,10 +65,10 @@ impl Production {
     ///
     /// * `symbols` - Symbols which represent production rule. First element of Vec represents
     ///     left part of rule(replaced symbol), others represent a right part of the rule
-    pub fn new(
-        symbols: &Vec<(SymbolsKind, String)>
+    pub fn new<T: ToString>(
+        symbols: &Vec<(SymbolsKind, T)>
     ) -> Production {
-        let symbols = symbols.iter().map(|v| match v.1.to_string() {
+        let symbols = symbols.iter().map(|v| match v.1.to_string().as_str() {
             EPSILON_SYMBOL => Symbol {
                 kind: SymbolsKind::EPSILON,
                 value: v.1.to_string()
