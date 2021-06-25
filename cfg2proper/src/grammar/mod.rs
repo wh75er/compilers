@@ -3,6 +3,7 @@ mod transformations;
 use std::collections::HashSet;
 
 const EPSILON_SYMBOL: &str = "&";
+const NEW_START: &str = "$";
 
 #[derive(Debug, Copy, Clone)]
 pub enum SymbolsKind {
