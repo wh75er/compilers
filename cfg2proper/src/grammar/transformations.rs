@@ -152,3 +152,76 @@ fn remove_epsilon_productions(prods: &Vec<Production>) -> Vec<Production> {
         expression_symbols.len() < 2 && expression_symbols.contains(EPSILON_SYMBOL.to_str())
     }).collect()
 }
+
+pub fn remove_unit_productions(g: &Grammar) -> Grammar {
+    let unit_chains = detect_unit_productions(g);
+
+    let mut new_productions: Vec<Production> = vec!();
+
+    g.productions.into_iter().for_each(|prod| {
+        if !is_unit_production(prod) {
+            extend_productions(&mut new_productions, &prod, &unit_chains)
+        }
+    });
+
+    Grammar::new(&g.non_terms, &g.terms, &new_productions, &g.start)
+}
+
+fn extend_productions(new_prods: &mut Vec<Production>, prod: &Production, unit_chains: &Vec<HashSet<String>>) {
+    //  iterates over each non-term's unit chain to find out
+    // if production is an end of the chain
+    for (idx, chain) in unit_chains.into_iter().enumerate() {
+        if chain.contains(&prod.replaced_symbol.value) {
+            new_prods.push(Production {
+                replaced_symbol: Symbol {
+                    kind: SymbolsKind::NONTERM,
+                    value: g.non_terms[idx]
+                },
+                expression: prod.expression.clone()
+            });
+
+            return;
+        }
+    }
+
+    new_prods.push(prod.clone());
+}
+
+fn detect_unit_productions(g: &Grammar) -> Vec<HashSet<String>> {
+    // Contains unit non-terminals and unit production index
+    let mut unit_chains: Vec<HashSet<String>> = vec!();
+
+    // Build non-terms chain for each non-term in G
+    for non_term in g.non_terms {
+        let mut old_set: HashSet<String> = HashSet::new();
+        old_set.insert(non_term);
+
+        // Build non-term chain of unit production
+        loop {
+            let mut new_set: HashSet<String> = HashSet::new();
+
+            for (idx, prod) in g.productions.into_iter().enumerate() {
+                if  is_unit_production(prod) &&
+                    old_set.contains(&prod.replaced_symbol.value)
+                {
+                    new_set.insert(prod.expression[0].value.to_string());
+                }
+            }
+
+            new_set.extend(&old_set);
+
+            if new_set == old_set {
+                break;
+            }
+        }
+
+        unit_chains.push(old_set);
+    }
+
+    unit_chains
+}
+
+fn is_unit_production(prod: Production) -> bool {
+    prod.expression.len() == 1 &&
+    prod.expression[0].kind == SymbolsKind::NONTERM
+}
