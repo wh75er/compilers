@@ -2,36 +2,34 @@ use crate::grammar::{ Grammar,
                       Symbol,
                       Production,
                       SymbolsKind,
-                      EPSILON_SYMBOL,
-                      NEW_START };
+                      EPSILON_SYMBOL};
 use std::collections::HashSet;
 use itertools::Itertools;
-use crate::grammar::SymbolsKind::EPSILON;
 
-pub fn get_epsilon_nonterms(g: &Grammar) -> HashSet<String> {
-    let mut old_set: HashSet<String> = HashSet::new();
-    old_set.insert(EPSILON_SYMBOL.to_string());
+pub fn get_epsilon_nonterms(g: &Grammar) -> HashSet<char> {
+    let mut old_set: HashSet<char> = HashSet::new();
+    old_set.insert(EPSILON_SYMBOL);
 
     loop {
-        let mut new_set: HashSet<String> = HashSet::new();
+        let mut new_set: HashSet<char> = HashSet::new();
 
-        let mut union: HashSet<String> = HashSet::new();
-        union.extend(old_set.iter().cloned());
-        union.extend(g.terms.iter().cloned());
+        let mut union: HashSet<char> = HashSet::new();
+        union.extend(old_set.iter());
+        union.extend(g.terms.iter());
 
-        g.productions.iter().cloned().for_each(|prod| {
-            let left = prod.replaced_symbol;
+        g.productions.iter().for_each(|prod| {
+            let left = &prod.replaced_symbol;
             let right = prod.expression
-                .into_iter()
+                .iter()
                 .map(|symbol| symbol.value)
-                .collect::<HashSet<String>>();
+                .collect::<HashSet<_>>();
 
             if right.is_subset(&union) {
                 new_set.insert(left.value);
             }
         });
 
-        new_set.extend(old_set.iter().cloned());
+        new_set.extend(old_set.iter());
 
         if new_set == old_set {
             break;
@@ -45,42 +43,40 @@ pub fn get_epsilon_nonterms(g: &Grammar) -> HashSet<String> {
 
 pub fn remove_useless_symbols(g: &Grammar) -> Grammar {
     let n_e = get_epsilon_nonterms(g);
-    let n1: HashSet<String> = g.non_terms
+    let n1: HashSet<_> = g.non_terms
         .intersection(&n_e)
         .cloned()
         .collect();
 
-    let mut union: HashSet<String> = HashSet::new();
-    union.extend(n_e.iter().cloned());
-    union.extend(g.terms.iter().cloned());
+    let mut union: HashSet<char> = HashSet::new();
+    union.extend(n_e.iter());
+    union.extend(g.terms.iter());
 
-    let p1: Vec<Production> = g.productions.iter().cloned().filter(|prod| {
-        let mut prod_symbols_set: HashSet<String> = prod.expression
+    let p1: Vec<_> = g.productions.iter().filter(|prod| {
+        let mut prod_symbols_set: HashSet<char> = prod.expression
             .iter()
-            .cloned()
             .map(|v| v.value)
-            .collect::<HashSet<String>>();
+            .collect::<HashSet<char>>();
 
         prod_symbols_set
-            .extend([prod.replaced_symbol.value.to_string()]
+            .extend([prod.replaced_symbol.value]
                 .iter()
-                .cloned()
-                .collect::<HashSet<String>>()
+                .collect::<HashSet<_>>()
             );
 
         prod_symbols_set.is_subset(
             &union
         )
-    }).collect();
+    }).cloned().collect();
 
-    let g1 = Grammar::new(&n1, &g.terms, &p1, g.start.clone());
+    let g1 = Grammar::new(n1, g.terms.clone(), p1, g.start.clone());
 
     remove_unreachable(&g1)
 }
 
 pub fn remove_unreachable(g: &Grammar) -> Grammar {
-    let mut old_set: HashSet<String> = HashSet::new();
-    let mut new_set: HashSet<String> = [g.start.clone()].iter().cloned().collect();
+    let mut old_set: HashSet<char> = HashSet::new();
+    let mut new_set: HashSet<char> = [g.start.clone()].iter().cloned().collect();
 
     while old_set != new_set {
         old_set = new_set.clone();
@@ -92,7 +88,7 @@ pub fn remove_unreachable(g: &Grammar) -> Grammar {
                             .iter()
                             .cloned()
                             .map(|symbol| symbol.value)
-                            .collect::<HashSet<String>>()
+                            .collect::<HashSet<char>>()
                     )
                 }
             })
@@ -100,14 +96,14 @@ pub fn remove_unreachable(g: &Grammar) -> Grammar {
     }
 
     let new_productions: Vec<Production> = g.productions.iter().filter(|prod| {
-        let mut production_symbols: HashSet<String> = HashSet::new();
+        let mut production_symbols: HashSet<char> = HashSet::new();
         production_symbols.insert(prod.replaced_symbol.value.clone());
         production_symbols.extend(
             prod.expression
                 .iter()
                 .cloned()
                 .map(|v| v.value)
-                .collect::<HashSet<String>>()
+                .collect::<HashSet<char>>()
         );
 
         production_symbols.is_subset(&new_set)
@@ -115,18 +111,18 @@ pub fn remove_unreachable(g: &Grammar) -> Grammar {
 
     let new_non_terms = new_set.intersection(&g.non_terms)
         .cloned()
-        .collect::<HashSet<String>>();
+        .collect::<HashSet<char>>();
     let new_terms = new_set.intersection(&g.terms)
         .cloned()
-        .collect::<HashSet<String>>();
+        .collect::<HashSet<char>>();
 
-    Grammar::new(&new_non_terms, &new_terms, &new_productions, g.start.clone())
+    Grammar::new(new_non_terms, new_terms, new_productions, g.start.clone())
 }
 
 pub fn to_e_free(g: &Grammar) -> Grammar {
     let n_e = get_epsilon_nonterms(g);
 
-    let mut new_start: String = g.start.clone();
+    let mut new_start: char = g.start.clone();
 
     // Removing epsilon productions
     let productions_without_epsilon = remove_epsilon_productions(&g.productions);
@@ -138,28 +134,27 @@ pub fn to_e_free(g: &Grammar) -> Grammar {
         compensate_epsilon_deletion(&mut new_productions, &prod, &n_e);
     });
 
-    let mut new_non_terms: HashSet<String> = g.non_terms.clone();
+    let mut new_non_terms: HashSet<char> = g.non_terms.clone();
 
     // S' -> S | e
     if n_e.contains(&g.start) {
-        new_start = NEW_START.to_string();
-        new_productions.push(Production::new(&vec!(
+        new_start = crate::grammar::NEW_START;
+        new_productions.push(Production::new(vec!(
             (SymbolsKind::NONTERM, new_start.clone()), (SymbolsKind::NONTERM, g.start.clone())
         )));
-        new_productions.push(Production::new(&vec!(
-            (SymbolsKind::NONTERM, new_start.clone()), (SymbolsKind::EPSILON, EPSILON_SYMBOL.to_string())
+        new_productions.push(Production::new(vec!(
+            (SymbolsKind::NONTERM, new_start.clone()), (SymbolsKind::EPSILON, EPSILON_SYMBOL)
         )));
 
         new_non_terms.insert(new_start.clone());
     }
 
-    Grammar::new(&new_non_terms, &g.terms, &new_productions, new_start.into())
+    Grammar::new(new_non_terms, g.terms.clone(), new_productions, new_start.into())
 }
 
-fn compensate_epsilon_deletion(new_productions: &mut Vec<Production>, prod: &Production, n_e: &HashSet<String>) {
-    let nullable_idxs: Vec<usize> = prod.expression
+fn compensate_epsilon_deletion(new_productions: &mut Vec<Production>, prod: &Production, n_e: &HashSet<char>) {
+    let nullable_idxs: Vec<_> = prod.expression
         .iter()
-        .cloned()
         .map(|symbol| symbol.value)
         .enumerate()
         .filter(|numeration| n_e.contains(&numeration.1))
@@ -169,26 +164,26 @@ fn compensate_epsilon_deletion(new_productions: &mut Vec<Production>, prod: &Pro
     for i in 1..nullable_idxs.len() {
         let mut new_prod: Vec<Symbol> = vec!(prod.replaced_symbol.clone());
         new_prod.extend_from_slice(&prod.expression);
-        for comb in nullable_idxs.iter().cloned().combinations(i) {
+        for comb in nullable_idxs.iter().combinations(i) {
             comb.into_iter().for_each(|idx| {
-                (new_prod.as_mut_slice())[1..][idx].value = "".to_string();
+                (new_prod.as_mut_slice())[1..][*idx].value = ' ';
             })
         }
-        let new_prod: Vec<(SymbolsKind, String)> = new_prod
+        let new_prod: Vec<(SymbolsKind, char)> = new_prod
             .into_iter()
-            .filter(|symbol| symbol.value != "".to_string())
+            .filter(|symbol| symbol.value != ' ')
             .map(|symbol| (symbol.kind, symbol.value))
             .collect();
-        new_productions.push(Production::new(&new_prod))
+        new_productions.push(Production::new(new_prod))
     }
 }
 
 fn remove_epsilon_productions(prods: &Vec<Production>) -> Vec<Production> {
-    prods.iter().cloned().filter(|prod| {
-        let expression_symbols: Vec<String> = prod.expression.iter().cloned().map(|symbol| symbol.value).collect();
+    prods.iter().filter(|prod| {
+        let expression_symbols: Vec<char> = prod.expression.iter().map(|symbol| symbol.value).collect();
 
-        expression_symbols.len() < 2 && expression_symbols.contains(&EPSILON_SYMBOL.to_string())
-    }).collect()
+        expression_symbols.len() < 2 && expression_symbols.contains(&EPSILON_SYMBOL)
+    }).cloned().collect()
 }
 
 pub fn remove_unit_productions(g: &Grammar) -> Grammar {
@@ -202,10 +197,10 @@ pub fn remove_unit_productions(g: &Grammar) -> Grammar {
         }
     });
 
-    Grammar::new(&g.non_terms, &g.terms, &new_productions, g.start.to_string())
+    Grammar::new(g.non_terms.clone(), g.terms.clone(), new_productions, g.start.clone())
 }
 
-fn extend_productions(new_prods: &mut Vec<Production>, g: &Grammar, prod: &Production, unit_chains: &Vec<HashSet<String>>) {
+fn extend_productions(new_prods: &mut Vec<Production>, g: &Grammar, prod: &Production, unit_chains: &Vec<HashSet<char>>) {
     //  iterates over each non-term's unit chain to find out
     // if production is an end of the chain
     for (idx, chain) in unit_chains.into_iter().enumerate() {
@@ -213,7 +208,7 @@ fn extend_productions(new_prods: &mut Vec<Production>, g: &Grammar, prod: &Produ
             new_prods.push(Production {
                 replaced_symbol: Symbol {
                     kind: SymbolsKind::NONTERM,
-                    value: g.non_terms.iter().cloned().collect::<Vec<String>>()[idx].clone()
+                    value: g.non_terms.iter().collect::<Vec<_>>()[idx].clone()
                 },
                 expression: prod.expression.clone()
             });
@@ -225,18 +220,18 @@ fn extend_productions(new_prods: &mut Vec<Production>, g: &Grammar, prod: &Produ
     new_prods.push(prod.clone());
 }
 
-fn detect_unit_productions(g: &Grammar) -> Vec<HashSet<String>> {
+fn detect_unit_productions(g: &Grammar) -> Vec<HashSet<char>> {
     // Contains unit non-terminals and unit production index
-    let mut unit_chains: Vec<HashSet<String>> = vec!();
+    let mut unit_chains: Vec<HashSet<char>> = vec!();
 
     // Build non-terms chain for each non-term in G
     for non_term in g.non_terms.iter() {
-        let mut old_set: HashSet<String> = HashSet::new();
-        old_set.insert(non_term.to_string());
+        let mut old_set: HashSet<char> = HashSet::new();
+        old_set.insert((*non_term).clone());
 
         // Build non-term chain of unit production
         loop {
-            let mut new_set: HashSet<String> = HashSet::new();
+            let mut new_set: HashSet<char> = HashSet::new();
 
             for prod in g.productions.iter() {
                 if  is_unit_production(&prod) &&
@@ -246,7 +241,7 @@ fn detect_unit_productions(g: &Grammar) -> Vec<HashSet<String>> {
                 }
             }
 
-            new_set.extend(old_set.iter().cloned());
+            new_set.extend(old_set.iter());
 
             if new_set == old_set {
                 break;
