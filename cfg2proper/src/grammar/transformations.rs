@@ -6,16 +6,18 @@ use crate::grammar::{ Grammar,
                       NEW_START };
 use std::collections::HashSet;
 use itertools::Itertools;
+use crate::grammar::SymbolsKind::EPSILON;
 
 pub fn get_epsilon_nonterms(g: &Grammar) -> HashSet<String> {
     let mut old_set: HashSet<String> = HashSet::new();
+    old_set.insert(EPSILON_SYMBOL.to_string());
 
     loop {
         let mut new_set: HashSet<String> = HashSet::new();
 
         let mut union: HashSet<String> = HashSet::new();
         union.extend(old_set.iter().cloned());
-        union.extend([EPSILON_SYMBOL.to_string()].iter().cloned());
+        union.extend(g.terms.iter().cloned());
 
         g.productions.iter().cloned().for_each(|prod| {
             let left = prod.replaced_symbol;
@@ -43,23 +45,37 @@ pub fn get_epsilon_nonterms(g: &Grammar) -> HashSet<String> {
 
 pub fn remove_useless_symbols(g: &Grammar) -> Grammar {
     let n_e = get_epsilon_nonterms(g);
-    let intersection:HashSet<String> = g.non_terms
+    let n1: HashSet<String> = g.non_terms
         .intersection(&n_e)
         .cloned()
         .collect();
+
+    let mut union: HashSet<String> = HashSet::new();
+    union.extend(n_e.iter().cloned());
+    union.extend(g.terms.iter().cloned());
+
     let p1: Vec<Production> = g.productions.iter().cloned().filter(|prod| {
-        let prod_right_set: HashSet<String> = prod.expression
+        let mut prod_symbols_set: HashSet<String> = prod.expression
             .iter()
             .cloned()
             .map(|v| v.value)
-            .collect();
+            .collect::<HashSet<String>>();
 
-        prod_right_set.is_subset(
-            &n_e.intersection(&g.terms).cloned().collect::<HashSet<String>>()
+        prod_symbols_set
+            .extend([prod.replaced_symbol.value.to_string()]
+                .iter()
+                .cloned()
+                .collect::<HashSet<String>>()
+            );
+
+        prod_symbols_set.is_subset(
+            &union
         )
     }).collect();
 
-    Grammar::new(&intersection, &g.terms, &p1, g.start.clone())
+    let g1 = Grammar::new(&n1, &g.terms, &p1, g.start.clone());
+
+    remove_unreachable(&g1)
 }
 
 pub fn remove_unreachable(g: &Grammar) -> Grammar {
@@ -97,7 +113,14 @@ pub fn remove_unreachable(g: &Grammar) -> Grammar {
         production_symbols.is_subset(&new_set)
     }).cloned().collect();
 
-    Grammar::new(&new_set, &g.terms, &new_productions, g.start.clone())
+    let new_non_terms = new_set.intersection(&g.non_terms)
+        .cloned()
+        .collect::<HashSet<String>>();
+    let new_terms = new_set.intersection(&g.terms)
+        .cloned()
+        .collect::<HashSet<String>>();
+
+    Grammar::new(&new_non_terms, &new_terms, &new_productions, g.start.clone())
 }
 
 pub fn to_e_free(g: &Grammar) -> Grammar {

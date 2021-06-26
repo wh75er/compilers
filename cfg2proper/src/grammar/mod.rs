@@ -1,4 +1,4 @@
-mod transformations;
+pub mod transformations;
 
 use std::collections::HashSet;
 
@@ -68,16 +68,10 @@ impl Production {
     pub fn new<T: ToString>(
         symbols: &Vec<(SymbolsKind, T)>
     ) -> Production {
-        let symbols = symbols.iter().map(|v| match v.1.to_string().as_str() {
-            EPSILON_SYMBOL => Symbol {
-                kind: SymbolsKind::EPSILON,
-                value: v.1.to_string()
-            },
-            _ => Symbol {
-                kind: v.0,
-                value: v.1.to_string()
-            }
-        }).collect::<Vec<Symbol>>().to_vec();
+        let symbols = symbols.iter().map(|v| Symbol {
+            kind: v.0,
+            value: v.1.to_string()
+        }).collect::<Vec<Symbol>>();
         let (first, elements) = symbols.split_first().expect("failed to split vector");
         Production {
             replaced_symbol: first.clone(),

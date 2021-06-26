@@ -3,6 +3,7 @@ mod grammar;
 use structopt::StructOpt;
 use std::collections::HashSet;
 
+use grammar::transformations;
 use grammar::SymbolsKind::{TERM, NONTERM};
 use crate::grammar::SymbolsKind::EPSILON;
 
@@ -25,7 +26,16 @@ fn main() {
             (NONTERM, "S"), (TERM, "a"), (NONTERM, "A"), (NONTERM, "B")
         )),
         grammar::Production::new(&vec!(
+            (NONTERM, "S"), (NONTERM, "C")
+        )),
+        grammar::Production::new(&vec!(
             (NONTERM, "D"), (TERM, "c"), (NONTERM, "D"), (TERM, "c")
+        )),
+        grammar::Production::new(&vec!(
+            (NONTERM, "D"), (TERM, "d")
+        )),
+        grammar::Production::new(&vec!(
+            (NONTERM, "C"), (TERM, "a"), (NONTERM, "C"), (NONTERM, "D")
         )),
         grammar::Production::new(&vec!(
             (NONTERM, "A"), (TERM, "a"), (NONTERM, "A")
@@ -45,6 +55,7 @@ fn main() {
     non_terms.insert("S");
     non_terms.insert("A");
     non_terms.insert("B");
+    non_terms.insert("C");
     non_terms.insert("D");
 
     let mut terms = HashSet::new();
@@ -54,7 +65,9 @@ fn main() {
     terms.insert("d");
     terms.insert("e");
 
-    let g = grammar::Grammar::new(&non_terms, &terms, &prods, "E");
+    let g = grammar::Grammar::new(&non_terms, &terms, &prods, "S");
 
-    println!("Init grammar {:?}", g);
+    let gm = transformations::remove_useless_symbols(&g);
+
+    println!("Init grammar {:?}", gm);
 }
