@@ -3,7 +3,7 @@ use crate::grammar::{ Grammar,
                       Production,
                       SymbolsKind,
                       EPSILON_SYMBOL};
-use std::collections::HashSet;
+use std::collections::{ HashSet, HashMap };
 use itertools::Itertools;
 
 pub fn get_productive(g: &Grammar) -> HashSet<char> {
@@ -224,40 +224,46 @@ fn remove_epsilon_productions(prods: &Vec<Production>) -> Vec<Production> {
 pub fn remove_unit_productions(g: &Grammar) -> Grammar {
     let unit_chains = detect_unit_productions(g);
 
+    println!("Unit chains: {:?}", unit_chains);
+
     let mut new_productions: Vec<Production> = vec!();
 
     g.productions.iter().for_each(|prod| {
         if !is_unit_production(prod) {
-            extend_productions(&mut new_productions, g, &prod, &unit_chains)
+            extend_productions(&mut new_productions, &prod, &unit_chains)
         }
     });
 
     Grammar::new(g.non_terms.clone(), g.terms.clone(), new_productions, g.start.clone())
 }
 
-fn extend_productions(new_prods: &mut Vec<Production>, g: &Grammar, prod: &Production, unit_chains: &Vec<HashSet<char>>) {
+fn extend_productions(new_prods: &mut Vec<Production>, prod: &Production, unit_chains: &HashMap<char, HashSet<char>>) {
+    let mut _new_prods = vec!();
     //  iterates over each non-term's unit chain to find out
     // if production is an end of the chain
-    for (idx, chain) in unit_chains.into_iter().enumerate() {
-        if chain.contains(&prod.replaced_symbol.value) {
-            new_prods.push(Production {
+    for (non_term, chain) in unit_chains.into_iter() {
+        if non_term != &prod.replaced_symbol.value && chain.contains(&prod.replaced_symbol.value) {
+            _new_prods.push(Production {
                 replaced_symbol: Symbol {
                     kind: SymbolsKind::NONTERM,
-                    value: g.non_terms.iter().collect::<Vec<_>>()[idx].clone()
+                    value: (*non_term).clone()
                 },
                 expression: prod.expression.clone()
             });
-
-            return;
         }
+    }
+
+    if !_new_prods.is_empty() {
+        new_prods.extend(_new_prods.into_iter());
+        return;
     }
 
     new_prods.push(prod.clone());
 }
 
-fn detect_unit_productions(g: &Grammar) -> Vec<HashSet<char>> {
+fn detect_unit_productions(g: &Grammar) -> HashMap<char, HashSet<char>> {
     // Contains unit non-terminals and unit production index
-    let mut unit_chains: Vec<HashSet<char>> = vec!();
+    let mut unit_chains: HashMap<char, HashSet<char>> = HashMap::new();
 
     // Build non-terms chain for each non-term in G
     for non_term in g.non_terms.iter() {
@@ -281,9 +287,11 @@ fn detect_unit_productions(g: &Grammar) -> Vec<HashSet<char>> {
             if new_set == old_set {
                 break;
             }
+
+            old_set = new_set;
         }
 
-        unit_chains.push(old_set);
+        unit_chains.insert((*non_term).clone(), old_set);
     }
 
     unit_chains

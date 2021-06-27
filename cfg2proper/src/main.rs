@@ -61,5 +61,7 @@ fn main() {
 
     let gm2 = transformations::remove_useless_symbols(&gm);
 
-    println!("Init grammar {:?}", gm2);
+    let gm3 = transformations::remove_unit_productions(&gm2);
+
+    println!("Init grammar {:?}", gm3);
 }
