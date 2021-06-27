@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use grammar::transformations;
 use grammar::SymbolsKind::{TERM, NONTERM};
 use crate::grammar::SymbolsKind::EPSILON;
+use crate::grammar::EPSILON_SYMBOL;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -23,31 +24,22 @@ fn main() {
 
     let prods: Vec<grammar::Production> = vec!(
         grammar::Production::new(vec!(
-            (NONTERM, 'S'), (TERM, 'a'), (NONTERM, 'A'), (NONTERM, 'B')
+            (NONTERM, 'S'), (NONTERM, 'B'), (NONTERM, 'C'),
         )),
         grammar::Production::new(vec!(
-            (NONTERM, 'S'), (NONTERM, 'C')
+            (NONTERM, 'S'), (NONTERM, 'A'), (TERM, 'b'),
         )),
         grammar::Production::new(vec!(
-            (NONTERM, 'D'), (TERM, 'c'), (NONTERM, 'D'), (TERM, 'c')
+            (NONTERM, 'B'), (EPSILON, EPSILON_SYMBOL),
         )),
         grammar::Production::new(vec!(
-            (NONTERM, 'D'), (TERM, 'd')
+            (NONTERM, 'C'), (TERM, 'c'),
         )),
         grammar::Production::new(vec!(
-            (NONTERM, 'C'), (TERM, 'a'), (NONTERM, 'C'), (NONTERM, 'D')
+            (NONTERM, 'A'), (NONTERM, 'A'), (TERM, 'a')
         )),
         grammar::Production::new(vec!(
-            (NONTERM, 'A'), (TERM, 'a'), (NONTERM, 'A')
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'A'), (TERM, 'a')
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'A'), (EPSILON, grammar::EPSILON_SYMBOL)
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'B'), (TERM, 'b')
+            (NONTERM, 'A'), (EPSILON, EPSILON_SYMBOL),
         )),
     );
 
@@ -56,18 +48,18 @@ fn main() {
     non_terms.insert('A');
     non_terms.insert('B');
     non_terms.insert('C');
-    non_terms.insert('D');
 
     let mut terms = HashSet::new();
     terms.insert('a');
     terms.insert('b');
     terms.insert('c');
-    terms.insert('d');
-    terms.insert('e');
 
     let g = grammar::Grammar::new(non_terms, terms, prods, 'S');
 
-    let gm = transformations::remove_useless_symbols(&g);
+    // let gm = transformations::remove_useless_symbols(&g);
+    let gm = transformations::to_e_free(&g);
 
-    println!("Init grammar {:?}", gm);
+    let gm2 = transformations::remove_useless_symbols(&gm);
+
+    println!("Init grammar {:?}", gm2);
 }

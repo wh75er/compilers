@@ -6,16 +6,37 @@ use crate::grammar::{ Grammar,
 use std::collections::HashSet;
 use itertools::Itertools;
 
-pub fn get_epsilon_nonterms(g: &Grammar) -> HashSet<char> {
+pub fn get_productive(g: &Grammar) -> HashSet<char> {
     let mut old_set: HashSet<char> = HashSet::new();
     old_set.insert(EPSILON_SYMBOL);
 
+    _handle_n_e_loop(|union: &mut HashSet<char>, old_set: &HashSet<char>| {
+        union.extend(old_set.iter());
+        union.extend(g.terms.iter());
+    }, g, &mut old_set);
+
+    old_set
+}
+
+// Provides non-terminals which lead to epsilon symbol
+pub fn get_nullable_non_terms(g: &Grammar) -> HashSet<char> {
+    let mut old_set: HashSet<char> = HashSet::new();
+    old_set.insert(EPSILON_SYMBOL);
+
+    _handle_n_e_loop(|union: &mut HashSet<char>, old_set: &HashSet<char>| {
+        union.extend(old_set.iter());
+    }, g, &mut old_set);
+
+    old_set
+}
+
+fn _handle_n_e_loop<UnionClosure>(union_closure: UnionClosure, g: &Grammar, old_set: &mut HashSet<char>)
+    where UnionClosure: Fn(&mut HashSet<char>, &HashSet<char>) {
     loop {
         let mut new_set: HashSet<char> = HashSet::new();
 
         let mut union: HashSet<char> = HashSet::new();
-        union.extend(old_set.iter());
-        union.extend(g.terms.iter());
+        union_closure(&mut union, old_set);
 
         g.productions.iter().for_each(|prod| {
             let left = &prod.replaced_symbol;
@@ -31,18 +52,16 @@ pub fn get_epsilon_nonterms(g: &Grammar) -> HashSet<char> {
 
         new_set.extend(old_set.iter());
 
-        if new_set == old_set {
+        if new_set == *old_set {
             break;
         }
 
-        old_set = new_set;
+        *old_set = new_set;
     }
-
-    old_set
 }
 
 pub fn remove_useless_symbols(g: &Grammar) -> Grammar {
-    let n_e = get_epsilon_nonterms(g);
+    let n_e = get_productive(g);
     let n1: HashSet<_> = g.non_terms
         .intersection(&n_e)
         .cloned()
@@ -120,7 +139,7 @@ pub fn remove_unreachable(g: &Grammar) -> Grammar {
 }
 
 pub fn to_e_free(g: &Grammar) -> Grammar {
-    let n_e = get_epsilon_nonterms(g);
+    let n_e = get_nullable_non_terms(g);
 
     let mut new_start: char = g.start.clone();
 
@@ -161,20 +180,36 @@ fn compensate_epsilon_deletion(new_productions: &mut Vec<Production>, prod: &Pro
         .map(|numeration| numeration.0)
         .collect();
 
-    for i in 1..nullable_idxs.len() {
-        let mut new_prod: Vec<Symbol> = vec!(prod.replaced_symbol.clone());
-        new_prod.extend_from_slice(&prod.expression);
+    //  Since all symbols in the production are nullable
+    // Ignore it
+    if nullable_idxs.len() == prod.expression.len() {
+        return;
+    }
+
+    //  In case we do not have any nullable terms in production
+    // Just append it to result
+    if nullable_idxs.is_empty() {
+        new_productions.push(prod.clone());
+
+        return;
+    }
+
+    for i in 0..nullable_idxs.len()+1 {
+        let mut prod_symbols: Vec<Symbol> = vec!(prod.replaced_symbol.clone());
+        prod_symbols.extend_from_slice(&prod.expression);
         for comb in nullable_idxs.iter().combinations(i) {
+            let mut new_prod = prod_symbols.clone();
             comb.into_iter().for_each(|idx| {
                 (new_prod.as_mut_slice())[1..][*idx].value = ' ';
-            })
+            });
+
+            let new_prod: Vec<(SymbolsKind, char)> = new_prod
+                .into_iter()
+                .filter(|symbol| symbol.value != ' ')
+                .map(|symbol| (symbol.kind, symbol.value))
+                .collect();
+            new_productions.push(Production::new(new_prod));
         }
-        let new_prod: Vec<(SymbolsKind, char)> = new_prod
-            .into_iter()
-            .filter(|symbol| symbol.value != ' ')
-            .map(|symbol| (symbol.kind, symbol.value))
-            .collect();
-        new_productions.push(Production::new(new_prod))
     }
 }
 
@@ -182,7 +217,7 @@ fn remove_epsilon_productions(prods: &Vec<Production>) -> Vec<Production> {
     prods.iter().filter(|prod| {
         let expression_symbols: Vec<char> = prod.expression.iter().map(|symbol| symbol.value).collect();
 
-        expression_symbols.len() < 2 && expression_symbols.contains(&EPSILON_SYMBOL)
+        !(expression_symbols.len() == 1 && expression_symbols.contains(&EPSILON_SYMBOL))
     }).cloned().collect()
 }
 
