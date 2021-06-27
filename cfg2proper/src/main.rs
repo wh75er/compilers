@@ -1,47 +1,32 @@
 mod grammar;
 
-use structopt::StructOpt;
 use std::collections::HashSet;
+use structopt::StructOpt;
 
-use grammar::transformations;
-use grammar::SymbolsKind::{TERM, NONTERM};
 use crate::grammar::SymbolsKind::EPSILON;
 use crate::grammar::EPSILON_SYMBOL;
+use grammar::transformations;
+use grammar::SymbolsKind::{NONTERM, TERM};
 
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "cfg2proper",
-    about = "This utility converts CFG to proper CFG"
-)]
+#[structopt(name = "cfg2proper", about = "This utility converts CFG to proper CFG")]
 struct Opt {
     /// Input file with CFG in JSON format
-    #[structopt(default_value="input_cfg.json")]
+    #[structopt(default_value = "input_cfg.json")]
     filename: String,
 }
 
 fn main() {
     let opt = Opt::from_args();
 
-    let prods: Vec<grammar::Production> = vec!(
-        grammar::Production::new(vec!(
-            (NONTERM, 'S'), (NONTERM, 'B'), (NONTERM, 'C'),
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'S'), (NONTERM, 'A'), (TERM, 'b'),
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'B'), (EPSILON, EPSILON_SYMBOL),
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'C'), (TERM, 'c'),
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'A'), (NONTERM, 'A'), (TERM, 'a')
-        )),
-        grammar::Production::new(vec!(
-            (NONTERM, 'A'), (EPSILON, EPSILON_SYMBOL),
-        )),
-    );
+    let prods: Vec<grammar::Production> = vec![
+        grammar::Production::new_from_chars(vec![(NONTERM, 'S'), (NONTERM, 'B'), (NONTERM, 'C')]),
+        grammar::Production::new_from_chars(vec![(NONTERM, 'S'), (NONTERM, 'A'), (TERM, 'b')]),
+        grammar::Production::new_from_chars(vec![(NONTERM, 'B'), (EPSILON, EPSILON_SYMBOL)]),
+        grammar::Production::new_from_chars(vec![(NONTERM, 'C'), (TERM, 'c')]),
+        grammar::Production::new_from_chars(vec![(NONTERM, 'A'), (NONTERM, 'A'), (TERM, 'a')]),
+        grammar::Production::new_from_chars(vec![(NONTERM, 'A'), (EPSILON, EPSILON_SYMBOL)]),
+    ];
 
     let mut non_terms = HashSet::new();
     non_terms.insert('S');
@@ -54,7 +39,7 @@ fn main() {
     terms.insert('b');
     terms.insert('c');
 
-    let g = grammar::Grammar::new(non_terms, terms, prods, 'S');
+    let g = grammar::Grammar::new_from_chars(non_terms, terms, prods, 'S');
 
     // let gm = transformations::remove_useless_symbols(&g);
     let gm = transformations::to_e_free(&g);
