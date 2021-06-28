@@ -3,7 +3,16 @@ pub mod transformations;
 use std::collections::HashSet;
 
 pub const EPSILON_SYMBOL: char = '&';
-const U_CODEPOINT: &str = "\u{030c}";
+
+lazy_static! {
+    static ref U_CODEPOINTS: HashSet<char> = {
+        let mut h = HashSet::new();
+        h.insert('\u{030c}');
+        h.insert('\u{0320}');
+        h.insert('\u{0337}');
+        h
+    };
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SymbolsKind {

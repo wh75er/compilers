@@ -1,4 +1,4 @@
-use crate::grammar::{Grammar, Production, Symbol, SymbolsKind, EPSILON_SYMBOL, U_CODEPOINT};
+use crate::grammar::{Grammar, Production, Symbol, SymbolsKind, EPSILON_SYMBOL, U_CODEPOINTS};
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::iter;
@@ -175,7 +175,7 @@ pub fn to_e_free(g: &Grammar) -> Grammar {
 
     // S' -> S | e
     if n_e.contains(&g.start) {
-        new_start = String::from(&g.start) + U_CODEPOINT;
+        new_start = get_new_out_of(&g.start);
         new_productions.push(Production::new(vec![
             (SymbolsKind::NONTERM, new_start.clone()),
             (SymbolsKind::NONTERM, g.start.clone()),
@@ -345,4 +345,14 @@ fn detect_unit_productions(g: &Grammar) -> HashMap<String, HashSet<String>> {
 
 fn is_unit_production(prod: &Production) -> bool {
     prod.expression.len() == 1 && prod.expression[0].kind == SymbolsKind::NONTERM
+}
+
+fn get_new_out_of(s: &String) -> String {
+    for codepoint in U_CODEPOINTS.iter() {
+        if s.chars().find(|c| c == codepoint).is_none() {
+            return s.to_string() + &codepoint.to_string();
+        }
+    }
+
+    return s.to_string() + &String::from('\'');
 }
