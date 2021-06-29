@@ -1,6 +1,7 @@
 pub mod transformations;
 
 use std::collections::HashSet;
+use std::fmt::Display;
 
 pub const EPSILON_SYMBOL: char = '&';
 
@@ -9,7 +10,6 @@ lazy_static! {
         let mut h = HashSet::new();
         h.insert('\u{030c}');
         h.insert('\u{0320}');
-        h.insert('\u{0337}');
         h
     };
 }
@@ -31,17 +31,17 @@ pub struct Symbol {
 /// Production is represented here
 #[derive(Debug, Clone)]
 pub struct Production {
-    replaced_symbol: Symbol,
-    expression: Vec<Symbol>,
+    pub replaced_symbol: Symbol,
+    pub expression: Vec<Symbol>,
 }
 
 /// Grammar is represented here
 #[derive(Debug)]
 pub struct Grammar {
-    non_terms: HashSet<String>,
-    terms: HashSet<String>,
-    productions: Vec<Production>,
-    start: String,
+    pub non_terms: HashSet<String>,
+    pub terms: HashSet<String>,
+    pub productions: Vec<Production>,
+    pub start: String,
 }
 
 impl Grammar {
@@ -116,5 +116,39 @@ impl Production {
             replaced_symbol: (*first).clone(),
             expression: elements.to_vec(),
         }
+    }
+}
+
+fn display_hashset(f: &mut std::fmt::Formatter<'_>, h: &HashSet<String>) -> std::fmt::Result {
+    for s in h.iter() {
+        write!(f, "{} ", s)?;
+    }
+    write!(f, "\n")?;
+
+    Ok(())
+}
+
+impl Display for Grammar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "\n")?;
+        write!(f, "Non-Terminals: ")?;
+        display_hashset(f, &self.non_terms)?;
+        write!(f, "Terminals: ")?;
+        display_hashset(f, &self.terms)?;
+        write!(f, "Productions:\n")?;
+
+        for prod in self.productions.iter() {
+            write!(f, "\t{} -> ", prod.replaced_symbol.value)?;
+            // write!(f, "{:?}\n", prod.expression);
+            for sym in prod.expression.iter().map(|sym| &sym.value) {
+                write!(f, "{} ", sym)?;
+            }
+            write!(f, "\n")?;
+        }
+
+        write!(f, "\n")?;
+        write!(f, "Start: {}", self.start)?;
+
+        Ok(())
     }
 }

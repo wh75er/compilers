@@ -356,3 +356,52 @@ fn get_new_out_of(s: &String) -> String {
 
     return s.to_string() + &String::from('\'');
 }
+
+pub fn eliminate_immediate_lr(a_prods: &mut Vec<Production>) -> Option<String> {
+    // Drain left recursive productions out of A productions
+    let mut recursive_prods: Vec<_> = a_prods.drain_filter(|prod|
+        prod.replaced_symbol.value == prod.expression[0].value
+    ).collect();
+
+    // There is no immediate left recursion
+    if recursive_prods.is_empty() {
+        return None
+    }
+
+    // Create substitution symbol for A
+    let a_sub_symbol = get_new_out_of(&recursive_prods[0].replaced_symbol.value);
+
+    // Extend beta productions with substituted A
+    // beta1 | beta2 ... -> beta1 | beta2 | beta1 A' | beta2 A'...
+    let beta_prods_extension: Vec<Production> = get_content_extended_by_sym(a_prods, &a_sub_symbol);
+    a_prods.extend_from_slice(&beta_prods_extension);
+
+    // Rebuild left recursion productions:
+    // A alpha1 | A alpha2 ... -> alpha1 | alpha2 | alpha1 A' | alpha2 A'
+    let mut alpha_prods: Vec<Production> = recursive_prods
+        .into_iter()
+        .map(|mut prod| {
+            prod.replaced_symbol.value = a_sub_symbol.to_string();
+            prod.expression.remove(0);
+            prod
+        })
+        .collect();
+    let alpha_prods_extension: Vec<Production> = get_content_extended_by_sym(&alpha_prods, &a_sub_symbol);
+
+    a_prods.extend_from_slice(&alpha_prods);
+    a_prods.extend_from_slice(&alpha_prods_extension);
+
+    Some(a_sub_symbol)
+}
+
+fn get_content_extended_by_sym(prods: &Vec<Production>, symbol: &String) -> Vec<Production> {
+    let mut prods_extension: Vec<Production> = vec![];
+    for prod in prods.iter() {
+        let mut extension = prod.clone();
+        extension.expression
+            .push(Symbol { kind: SymbolsKind::NONTERM, value: symbol.to_string() });
+        prods_extension.push(extension);
+    }
+
+    prods_extension
+}
