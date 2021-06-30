@@ -3,6 +3,8 @@ use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::iter;
 
+const MAP_ELEMENT_NOT_FOUND_MSG: &str = "There must be at least one production for requested grammar non-terminal";
+
 pub fn get_productive(g: &Grammar) -> HashSet<String> {
     let mut old_set: HashSet<String> = HashSet::new();
     old_set.insert(EPSILON_SYMBOL.to_string());
@@ -263,8 +265,6 @@ fn remove_epsilon_productions(prods: &Vec<Production>) -> Vec<Production> {
 pub fn remove_unit_productions(g: &Grammar) -> Grammar {
     let unit_chains = detect_unit_productions(g);
 
-    println!("Unit chains: {:?}", unit_chains);
-
     let mut new_productions: Vec<Production> = vec![];
 
     for prod in g.productions.iter() {
@@ -357,9 +357,12 @@ fn get_new_out_of(s: &String) -> String {
     return s.to_string() + &String::from('\'');
 }
 
-pub fn eliminate_immediate_lr(a_prods: &mut Vec<Production>) -> Option<String> {
+// Removes immediate left recursion within A productions
+// Returns Optional result with substituted symbol A' and
+// corresponding productions
+fn eliminate_immediate_lr(a_prods: &mut Vec<Production>) -> Option<(String, Vec<Production>)> {
     // Drain left recursive productions out of A productions
-    let mut recursive_prods: Vec<_> = a_prods.drain_filter(|prod|
+    let recursive_prods: Vec<_> = a_prods.drain_filter(|prod|
         prod.replaced_symbol.value == prod.expression[0].value
     ).collect();
 
@@ -378,7 +381,7 @@ pub fn eliminate_immediate_lr(a_prods: &mut Vec<Production>) -> Option<String> {
 
     // Rebuild left recursion productions:
     // A alpha1 | A alpha2 ... -> alpha1 | alpha2 | alpha1 A' | alpha2 A'
-    let mut alpha_prods: Vec<Production> = recursive_prods
+    let alpha_prods: Vec<Production> = recursive_prods
         .into_iter()
         .map(|mut prod| {
             prod.replaced_symbol.value = a_sub_symbol.to_string();
@@ -388,10 +391,13 @@ pub fn eliminate_immediate_lr(a_prods: &mut Vec<Production>) -> Option<String> {
         .collect();
     let alpha_prods_extension: Vec<Production> = get_content_extended_by_sym(&alpha_prods, &a_sub_symbol);
 
-    a_prods.extend_from_slice(&alpha_prods);
-    a_prods.extend_from_slice(&alpha_prods_extension);
+    // Contains A' productions
+    let mut sub_prods = vec![];
 
-    Some(a_sub_symbol)
+    sub_prods.extend_from_slice(&alpha_prods);
+    sub_prods.extend_from_slice(&alpha_prods_extension);
+
+    Some((a_sub_symbol, sub_prods))
 }
 
 fn get_content_extended_by_sym(prods: &Vec<Production>, symbol: &String) -> Vec<Production> {
@@ -404,4 +410,87 @@ fn get_content_extended_by_sym(prods: &Vec<Production>, symbol: &String) -> Vec<
     }
 
     prods_extension
+}
+
+pub fn eliminate_indirect_lr(g: &Grammar) -> Grammar {
+    let mut mapping = map_productions_to_non_term(g);
+    let mut new_non_terms: Vec<String> = vec![];
+
+    let map_keys = mapping.keys().cloned().collect::<Vec<String>>();
+
+    for (i, i_value) in map_keys.iter().enumerate() {
+        let mut ai_productions = mapping.get(i_value)
+            .expect(MAP_ELEMENT_NOT_FOUND_MSG).clone();
+        for j_value in map_keys.iter().take(i) {
+            let aj_productions = mapping.get(j_value)
+                .expect(MAP_ELEMENT_NOT_FOUND_MSG);
+            let ai2aj_prods = ai_productions
+                .drain_filter(|prod| prod.expression[0].value == *j_value)
+                .collect::<Vec<Production>>();
+            for mut prod in ai2aj_prods.into_iter() {
+                prod.expression.remove(0);
+                let extension = extend_from_front(aj_productions, &prod);
+                ai_productions.extend_from_slice(&extension);
+            }
+        }
+        let new_non_term = eliminate_immediate_lr(&mut ai_productions);
+        match new_non_term {
+            Some((new_non_term, prods)) => {
+                new_non_terms.push(new_non_term.to_string());
+                mapping.insert(new_non_term.to_string(), prods);
+            },
+            _ => ()
+        }
+
+        mapping.insert(i_value.to_string(), ai_productions.clone());
+    }
+
+    convert_mapping_to_grammar(&mapping, &g.terms, &g.start)
+}
+
+fn convert_mapping_to_grammar(mapping: &HashMap<String, Vec<Production>>, terms: &HashSet<String>, start: &String) -> Grammar {
+    let mut non_terms: HashSet<String> = HashSet::new();
+    let mut productions: Vec<Production> = vec![];
+    for (non_term, prods) in mapping {
+        non_terms.insert(non_term.to_string());
+        productions.extend_from_slice(prods);
+    }
+
+    Grammar::new(non_terms, terms.clone(), productions, start.clone())
+}
+
+// Inserting l production to the front of all r productions
+// A -> l and B -> r1 | r2 | r3
+// A -> l r1 | l r2 | l r3
+fn extend_from_front(l: &Vec<Production>, r: &Production) -> Vec<Production> {
+    let mut extension: Vec<Production> = vec![];
+    for prod in l {
+        let extended_prod: Vec<Symbol> = vec![]
+            .iter()
+            .chain(prod.expression.iter())
+            .chain(r.expression.iter())
+            .cloned()
+            .collect();
+        extension.push(Production {
+            replaced_symbol: r.replaced_symbol.clone(),
+            expression: extended_prod,
+        });
+    }
+
+    extension
+}
+
+fn map_productions_to_non_term(g: &Grammar) -> HashMap<String, Vec<Production>> {
+    let mut h: HashMap<String, Vec<_>> = HashMap::new();
+
+    for non_term in g.non_terms.iter() {
+        let prods = g.productions
+            .iter()
+            .filter(|prod| prod.replaced_symbol.value == *non_term)
+            .cloned()
+            .collect::<Vec<_>>();
+        h.insert(non_term.to_string(), prods);
+    }
+
+    h
 }

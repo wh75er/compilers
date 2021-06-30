@@ -139,7 +139,6 @@ impl Display for Grammar {
 
         for prod in self.productions.iter() {
             write!(f, "\t{} -> ", prod.replaced_symbol.value)?;
-            // write!(f, "{:?}\n", prod.expression);
             for sym in prod.expression.iter().map(|sym| &sym.value) {
                 write!(f, "{} ", sym)?;
             }
