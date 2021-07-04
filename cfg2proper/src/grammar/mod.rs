@@ -1,7 +1,7 @@
 pub mod transformations;
 pub mod parser;
 
-use std::collections::HashSet;
+use std::collections::{ HashSet, HashMap };
 use std::fmt::Display;
 
 pub const EPSILON_SYMBOL: char = '&';
@@ -15,7 +15,7 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Hash)]
 pub enum SymbolsKind {
     TERM,
     NONTERM,
@@ -23,7 +23,7 @@ pub enum SymbolsKind {
 }
 
 /// Symbol is represented here
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct Symbol {
     pub kind: SymbolsKind,
     pub value: String,
@@ -122,6 +122,53 @@ impl Production {
     }
 }
 
+struct ProductionVec<'a>(&'a Vec<Production>);
+struct SymbolVec<'a>(&'a Vec<Symbol>);
+
+impl<'a> Display for SymbolVec<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut symbols_it = self.0.iter().peekable();
+        while let Some(sym) = symbols_it.next() {
+            if symbols_it.peek().is_some() {
+                write!(f, "{} ", sym.value)?;
+            } else {
+                write!(f, "{}", sym.value)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a> Display for ProductionVec<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut lhs_prods_map: HashMap<String, Vec<Vec<Symbol>>> = HashMap::new();
+
+        for prod in self.0 {
+            if let Some(v) = lhs_prods_map.get_mut(&prod.replaced_symbol.value) {
+                v.push(prod.expression.clone());
+            } else {
+                lhs_prods_map.insert(prod.replaced_symbol.value.to_string(), vec![prod.expression.clone()]);
+            }
+        }
+
+        for (lhs, rules) in lhs_prods_map {
+            write!(f, "{} -> ", lhs)?;
+            let mut rules_it = rules.iter().peekable();
+            while let Some(rule) = rules_it.next() {
+                if rules_it.peek().is_some() {
+                    write!(f, "{} | ", SymbolVec(rule))?;
+                } else {
+                    write!(f, "{}", SymbolVec(rule))?;
+                }
+            }
+            write!(f, "\n")?;
+        }
+
+        Ok(())
+    }
+}
+
 fn display_hashset(f: &mut std::fmt::Formatter<'_>, h: &HashSet<String>) -> std::fmt::Result {
     for s in h.iter() {
         write!(f, "{} ", s)?;
@@ -134,21 +181,16 @@ fn display_hashset(f: &mut std::fmt::Formatter<'_>, h: &HashSet<String>) -> std:
 impl Display for Grammar {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "\n")?;
+
         write!(f, "Non-Terminals: ")?;
         display_hashset(f, &self.non_terms)?;
+
         write!(f, "Terminals: ")?;
         display_hashset(f, &self.terms)?;
-        write!(f, "Productions:\n")?;
 
-        for prod in self.productions.iter() {
-            write!(f, "\t{} -> ", prod.replaced_symbol.value)?;
-            for sym in prod.expression.iter().map(|sym| &sym.value) {
-                write!(f, "{} ", sym)?;
-            }
-            write!(f, "\n")?;
-        }
+        write!(f, "Productions: \n")?;
+        write!(f, "{}\n", ProductionVec(&self.productions))?;
 
-        write!(f, "\n")?;
         write!(f, "Start: {}", self.start)?;
 
         Ok(())
