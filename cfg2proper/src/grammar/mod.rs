@@ -1,4 +1,5 @@
 pub mod transformations;
+pub mod parser;
 
 use std::collections::HashSet;
 use std::fmt::Display;
@@ -66,6 +67,7 @@ impl Grammar {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_from_chars(
         non_terms: HashSet<char>,
         terms: HashSet<char>,
@@ -103,6 +105,7 @@ impl Production {
         }
     }
 
+    #[allow(dead_code)]
     pub fn new_from_chars(symbols: Vec<(SymbolsKind, char)>) -> Production {
         let symbols = symbols
             .into_iter()
