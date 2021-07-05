@@ -1,6 +1,8 @@
 pub mod transformations;
 pub mod parser;
 
+use serde::{Deserialize, Serialize};
+
 use std::collections::{ HashSet, HashMap };
 use std::fmt::Display;
 
@@ -15,33 +17,42 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Serialize, Deserialize)]
 pub enum SymbolsKind {
+    #[serde(rename = "term")]
     TERM,
+    #[serde(rename = "nonterm")]
     NONTERM,
+    #[serde(rename = "epsilon")]
     EPSILON,
 }
 
 /// Symbol is represented here
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Hash, Serialize, Deserialize)]
 pub struct Symbol {
     pub kind: SymbolsKind,
     pub value: String,
 }
 
 /// Production is represented here
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Production {
+    #[serde(rename = "lhs")]
     pub replaced_symbol: Symbol,
+    #[serde(rename = "rhs")]
     pub expression: Vec<Symbol>,
 }
 
 /// Grammar is represented here
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Grammar {
+    #[serde(rename = "nonterms")]
     pub non_terms: HashSet<String>,
+    #[serde(rename = "terms")]
     pub terms: HashSet<String>,
+    #[serde(rename = "productions")]
     pub productions: Vec<Production>,
+    #[serde(rename = "startsymbol")]
     pub start: String,
 }
 

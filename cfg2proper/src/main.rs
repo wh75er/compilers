@@ -7,7 +7,7 @@ extern crate lazy_static;
 use structopt::StructOpt;
 
 use grammar::transformations;
-use grammar::parser::parse_from_file;
+use grammar::parser::{ parse_from_file, write_json_to_file };
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "cfg2proper", about = "This utility converts CFG to proper CFG")]
@@ -36,5 +36,12 @@ fn main() {
 
     let gm4 = transformations::eliminate_indirect_lr(&gm3);
 
-    println!("Init grammar {}", gm4);
+    println!("Proper cfg grammar without left recursion: {}", gm4);
+
+    match write_json_to_file(&gm4, "output_cfg.json") {
+        Ok(_) => (),
+        Err(e) => {
+            panic!("Failed to write grammar in json format");
+        }
+    };
 }

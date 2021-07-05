@@ -2,6 +2,7 @@ use crate::grammar::{Grammar, Production, Symbol, SymbolsKind, EPSILON_SYMBOL};
 use std::error::Error;
 use std::{ fs, fmt };
 use std::collections::HashSet;
+use std::io::prelude::*;
 
 #[derive(Debug)]
 enum ParseError {
@@ -179,4 +180,12 @@ fn convert_string_to_symbol(s: &String, non_terms: &HashSet<String>, terms: &Has
     }
 
     Err(ParseError::FailedConvertIntoSymbol.into())
+}
+
+pub fn write_json_to_file(g: &Grammar, filename: &str) -> Result<(), Box<dyn Error>> {
+    let mut file = fs::File::create(filename)?;
+    let j = serde_json::to_string(g)?;
+    file.write_all(j.as_bytes())?;
+
+    Ok(())
 }
