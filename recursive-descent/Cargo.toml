@@ -1,0 +1,11 @@
+[package]
+name = "regex2fsm"
+version = "0.1.0"
+authors = ["wh4le"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+structopt = "0.3.21"
+dot = "0.1.4"
