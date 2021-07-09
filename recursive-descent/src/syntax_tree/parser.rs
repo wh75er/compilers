@@ -4,7 +4,7 @@ use std::error;
 use std::iter::Peekable;
 
 struct Parser<'a> {
-    expr: &'a mut Peekable<std::slice::Iter<'a, &'a str>>,
+    expr: Box<Peekable<std::slice::Iter<'a, &'a str>>>,
 }
 
 pub fn parse<'a>(tokenized_expr: Vec<&'a str>) -> Result<Box<SyntaxTree>, Box<dyn error::Error>> {
@@ -12,10 +12,14 @@ pub fn parse<'a>(tokenized_expr: Vec<&'a str>) -> Result<Box<SyntaxTree>, Box<dy
     println!("Tokenized expression: {:?}", tokenized_expr.iter().map(ToString::to_string));
 
     let mut parser = Parser {
-        expr: &mut tokenized_expr.iter().peekable(),
+        expr: Box::new(tokenized_expr.iter().peekable()),
     };
 
     let syntax_tree = parser.expr()?;
+
+    if parser.expr.peek().is_some() {
+        return Err("Syntax error occurred".into())
+    }
 
     #[cfg(debug_assertions)]
     println!("Parsed expression: {:#?}", syntax_tree);
@@ -86,23 +90,31 @@ impl Parser<'_> {
 
     fn math_expr_quote(&mut self) -> Result<Box<SyntaxTree>, String> {
         println!("Entered to math-expr'");
+        let it_state = self.expr.clone();
         // Check math-expr' ::= add-sign term
         let mut add_sign_node = self.add_sign()?;
 
-        let term_node = self.term()?;
-
-        // Check math-expr' ::= add-sign term math-expr'
-        match self.math_expr_quote() {
-            Ok(mut math_expr_node) => {
-                math_expr_node.left = Some(term_node);
-                add_sign_node.right = Some(math_expr_node);
-                Ok(add_sign_node)
+        return match self.term() {
+            Ok(term_node) => {
+                // Check math-expr' ::= add-sign term math-expr'
+                match self.math_expr_quote() {
+                    Ok(mut math_expr_node) => {
+                        math_expr_node.left = Some(term_node);
+                        add_sign_node.right = Some(math_expr_node);
+                        Ok(add_sign_node)
+                    },
+                    _ => {
+                        add_sign_node.right = Some(term_node);
+                        Ok(add_sign_node)
+                    }
+                }
             },
-            _ => {
-                add_sign_node.right = Some(term_node);
-                Ok(add_sign_node)
+            Err(e) => {
+                self.expr = it_state;
+                Err(e)
             }
         }
+
     }
 
     fn term(&mut self) -> Result<Box<SyntaxTree>, String> {
@@ -122,21 +134,28 @@ impl Parser<'_> {
 
     fn term_quote(&mut self) -> Result<Box<SyntaxTree>, String> {
         println!("Entered to term'");
+        let it_state = self.expr.clone();
         // Check term' ::= multiplier-sign factor
         let mut multiplier_sign_node = self.multiplier_sign()?;
 
-        let factor_node = self.factor()?;
-
-        // Check term' ::= multiplier-sign factor term'
-        match self.term_quote() {
-            Ok(mut inner_term_node) => {
-                inner_term_node.left = Some(factor_node);
-                multiplier_sign_node.right = Some(inner_term_node);
-                Ok(multiplier_sign_node)
+        return match self.factor() {
+            Ok(factor_node) => {
+                // Check term' ::= multiplier-sign factor term'
+                match self.term_quote() {
+                    Ok(mut inner_term_node) => {
+                        inner_term_node.left = Some(factor_node);
+                        multiplier_sign_node.right = Some(inner_term_node);
+                        Ok(multiplier_sign_node)
+                    },
+                    _ => {
+                        multiplier_sign_node.right = Some(factor_node);
+                        Ok(multiplier_sign_node)
+                    }
+                }
             },
-            _ => {
-                multiplier_sign_node.right = Some(factor_node);
-                Ok(multiplier_sign_node)
+            Err(e) => {
+                self.expr = it_state;
+                Err(e)
             }
         }
     }
@@ -162,19 +181,27 @@ impl Parser<'_> {
 
         match **s {
             "^" => {
+                let iter_state = self.expr.clone();
                 self.expr.next();
                 // Check factor' ::= '^' primary-expr
-                let primary_expr_node = self.primary_expr()?;
-                let mut node = Box::new(SyntaxTree::new_node());
-                node.entry = TermType::OPERATION(Operations::POWER);
-                // check factor' ::= '^' primary-expr factor'
-                if let Ok(mut right) = self.factor_quote() {
-                    right.left = Some(primary_expr_node);
-                    node.right = Some(right);
-                } else {
-                    node.right = Some(primary_expr_node);
+                return match self.primary_expr() {
+                    Ok(primary_expr_node) => {
+                        let mut node = Box::new(SyntaxTree::new_node());
+                        node.entry = TermType::OPERATION(Operations::POWER);
+                        // check factor' ::= '^' primary-expr factor'
+                        if let Ok(mut right) = self.factor_quote() {
+                            right.left = Some(primary_expr_node);
+                            node.right = Some(right);
+                        } else {
+                            node.right = Some(primary_expr_node);
+                        }
+                        Ok(node)
+                    },
+                    Err(e) => {
+                        self.expr = iter_state;
+                        Err(e)
+                    }
                 }
-                Ok(node)
             }
             _ => Err("Expected ^, found something else".into())
         }
