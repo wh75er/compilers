@@ -55,7 +55,7 @@ impl Parser<'_> {
                         math_expr_node.left = Some(term_node);
                         Ok(math_expr_node)
                     },
-                    Err(e) => {
+                    Err(_) => {
                         Ok(term_node)
                     },
                 }

@@ -1,18 +1,21 @@
 pub mod parser;
+mod draw;
 
-#[derive(Debug)]
+use std::fs::File;
+
+#[derive(Debug, Clone)]
 pub struct SyntaxTree {
     pub entry: TermType,
     pub left: Option<Box<SyntaxTree>>,
     pub right: Option<Box<SyntaxTree>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Identifiers {
     SingleQuote
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TermType {
     OPERATION(Operations),
     NUMBER(String),
@@ -20,7 +23,7 @@ pub enum TermType {
     NULL,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operations {
     ADDITION,
     SUBTRACTION,
@@ -45,6 +48,10 @@ impl SyntaxTree {
             left: None,
             right: None,
         }
+    }
+    pub fn render_to(&self, output: &str) {
+        let mut f = File::create(output).unwrap();
+        dot::render(self, &mut f).unwrap()
     }
 }
 
@@ -119,5 +126,22 @@ impl TermType {
         }
 
         None
+    }
+
+    fn as_string(&self) -> String {
+        match self {
+            TermType::OPERATION(op) => {
+                op.as_string().to_string()
+            },
+            TermType::IDENTIFIER(id) => {
+                id.as_string().to_string()
+            },
+            TermType::NUMBER(num) => {
+                num.to_string().to_string()
+            },
+            TermType::NULL => {
+                "null".to_string()
+            }
+        }
     }
 }
