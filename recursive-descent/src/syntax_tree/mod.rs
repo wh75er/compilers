@@ -20,6 +20,8 @@ pub enum TermType {
     OPERATION(Operations),
     NUMBER(String),
     IDENTIFIER(Identifiers),
+    ID(String),
+    DELIMITER,
     NULL,
 }
 
@@ -111,6 +113,12 @@ impl Identifiers {
     }
 }
 
+fn is_valid_id(s: &String) -> bool {
+    let valid_symbols = s.chars().filter(|c| c.is_alphabetic() && c.is_lowercase()).collect::<Vec<_>>();
+
+    valid_symbols.len() == s.len()
+}
+
 impl TermType {
     fn from_string(s: &str) -> Option<TermType> {
         if let Some(op) = Operations::from_string(s) {
@@ -125,6 +133,14 @@ impl TermType {
             return Some(TermType::IDENTIFIER(id))
         }
 
+        if is_valid_id(&s.to_string()) {
+            return Some(TermType::ID(s.to_string()));
+        }
+
+        if s == ";" {
+            return Some(TermType::DELIMITER)
+        }
+
         None
     }
 
@@ -137,10 +153,16 @@ impl TermType {
                 id.as_string().to_string()
             },
             TermType::NUMBER(num) => {
-                num.to_string().to_string()
+                num.to_string()
             },
             TermType::NULL => {
                 "null".to_string()
+            }
+            TermType::ID(id) => {
+                id.to_string()
+            },
+            TermType::DELIMITER => {
+                ";".to_string()
             }
         }
     }

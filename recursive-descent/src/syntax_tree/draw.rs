@@ -37,8 +37,6 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed> for SyntaxTree {
             }
         }
 
-        println!("Nodes: {:?}", nodes.iter().cloned().enumerate().collect::<Vec<_>>());
-
         nodes.iter().cloned().enumerate().collect()
     }
 
@@ -66,8 +64,6 @@ impl<'a> dot::GraphWalk<'a, Nd, Ed> for SyntaxTree {
                 _ => ()
             }
         }
-
-        println!("edges: {:?}", edges.iter().map(|tuple| (tuple.0.to_string(), tuple.1.to_string())).collect::<Vec<_>>());
 
         Cow::Owned(edges)
     }

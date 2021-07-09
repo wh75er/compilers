@@ -2,6 +2,8 @@ use super::{TermType, Operations, SyntaxTree};
 
 use std::error;
 use std::iter::Peekable;
+use crate::syntax_tree::is_valid_id;
+use crate::syntax_tree::TermType::OPERATION;
 
 struct Parser<'a> {
     expr: Box<Peekable<std::slice::Iter<'a, &'a str>>>,
@@ -15,7 +17,7 @@ pub fn parse<'a>(tokenized_expr: Vec<&'a str>) -> Result<Box<SyntaxTree>, Box<dy
         expr: Box::new(tokenized_expr.iter().peekable()),
     };
 
-    let syntax_tree = parser.expr()?;
+    let syntax_tree = parser.block()?;
 
     if parser.expr.peek().is_some() {
         return Err("Syntax error occurred".into())
@@ -28,14 +30,128 @@ pub fn parse<'a>(tokenized_expr: Vec<&'a str>) -> Result<Box<SyntaxTree>, Box<dy
 }
 
 impl Parser<'_> {
+    fn block(&mut self) -> Result<Box<SyntaxTree>, String> {
+        let s = self.expr.peek().ok_or("Expected begin, found nothing")?;
+
+        if s != &&"begin" {
+            return Err("Syntax error. Expected begin, found nothing".into());
+        }
+
+        self.expr.next();
+
+        let node = self.operator_list()?;
+
+        let s = self.expr.peek().ok_or("Expected end, found nothing")?;
+
+        if s != &&"end" {
+            return Err("Syntax error. Expected begin, found nothing".into());
+        }
+
+        self.expr.next();
+
+        Ok(node)
+
+    }
+
+    fn operator_list(&mut self) -> Result<Box<SyntaxTree>, String> {
+        // Check operator-list ::= operator
+        let inner_node = self.operator()?;
+
+        // Check factor ::= primary_expr factor'
+        match self.operator_list_quote() {
+            Ok(mut operator) => {
+                operator.left = Some(inner_node);
+                Ok(operator)
+            },
+            _ => Ok(inner_node)
+        }
+    }
+
+    fn operator_list_quote(&mut self) -> Result<Box<SyntaxTree>, String> {
+        let s = self.expr.peek().ok_or("Expected symbol ;, found nothing")?;
+
+        match **s {
+            ";" => {
+                let iter_state = self.expr.clone();
+                self.expr.next();
+                // Check operator-list' ::= ';' operator
+                return match self.operator() {
+                    Ok(operator_node) => {
+                        let mut node = Box::new(SyntaxTree::new_node());
+                        node.entry = TermType::DELIMITER;
+                        // check operator-list' ::= ';' operator operator-list'
+                        if let Ok(mut right) = self.operator_list_quote() {
+                            right.left = Some(operator_node);
+                            node.right = Some(right);
+                        } else {
+                            node.right = Some(operator_node);
+                        }
+                        Ok(node)
+                    },
+                    Err(e) => {
+                        self.expr = iter_state;
+                        Err(e)
+                    }
+                }
+            }
+            _ => Err("Expected ;, found something else".into())
+        }
+    }
+
+    fn operator(&mut self) -> Result<Box<SyntaxTree>, String> {
+        let it_state = self.expr.clone();
+        return match self.id() {
+            Ok(id) => {
+                let s = self.expr.peek().ok_or("Expected = sign. But nothing were found")?;
+                match **s {
+                    "=" => {
+                        self.expr.next();
+                        match self.expr() {
+                            Ok(expr) => {
+                                let mut node = Box::new(SyntaxTree::new_node());
+                                node.entry = TermType::OPERATION(Operations::EQUAL);
+                                node.left = Some(id);
+                                node.right = Some(expr);
+                                Ok(node)
+                            },
+                            Err(e) => Err(e)
+                        }
+                    },
+                    _ => Err("Expected = sign, found something else".into())
+                }
+            },
+            Err(e) => {
+                self.expr = it_state;
+                Err(e)
+            }
+        }
+    }
+
+    fn id(&mut self) -> Result<Box<SyntaxTree>, String> {
+        let s = self.expr.peek().ok_or("Expected identifier([a-z]*) symbols. But nothing were found")?;
+
+        if is_valid_id(&s.to_string()) {
+            let mut node = Box::new(SyntaxTree::new_node());
+            node.entry = TermType::ID(s.to_string());
+            self.expr.next();
+            return Ok(node)
+        }
+
+        return Err("Expected lowercase alphabetic signs. Found something else".into());
+    }
+
     fn expr(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entering first expression");
         let l_expr_node = self.math_expr()?;
+        #[cfg(debug_assertions)]
         println!("Exiting");
 
         let mut equality_sign_node = self.equality_sign()?;
+        #[cfg(debug_assertions)]
         println!("Exiting equality_sign_node");
 
+        #[cfg(debug_assertions)]
         println!("Entering left expression");
         let r_expr_node = self.math_expr()?;
 
@@ -46,6 +162,7 @@ impl Parser<'_> {
     }
 
     fn math_expr(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to math-expr");
         // Check production math-expr ::= term | term math-expr'
         match self.term() {
@@ -89,6 +206,7 @@ impl Parser<'_> {
     }
 
     fn math_expr_quote(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to math-expr'");
         let it_state = self.expr.clone();
         // Check math-expr' ::= add-sign term
@@ -118,6 +236,7 @@ impl Parser<'_> {
     }
 
     fn term(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to term");
         // Check term ::= factor
         let factor_node = self.factor()?;
@@ -133,6 +252,7 @@ impl Parser<'_> {
     }
 
     fn term_quote(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to term'");
         let it_state = self.expr.clone();
         // Check term' ::= multiplier-sign factor
@@ -161,6 +281,7 @@ impl Parser<'_> {
     }
 
     fn factor(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to factor");
         // Check factor ::= primary_expr
         let inner_node = self.primary_expr()?;
@@ -176,6 +297,7 @@ impl Parser<'_> {
     }
 
     fn factor_quote(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to factor'");
         let s = self.expr.peek().ok_or("Expected symbol ^, found nothing")?;
 
@@ -208,12 +330,15 @@ impl Parser<'_> {
     }
 
     fn primary_expr(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to primary-expr");
         let mut node = Box::new(SyntaxTree::new_node());
 
         let s = self.expr.peek().ok_or("Expected number, identifier or opening bracket. None of them were found")?;
 
+        #[cfg(debug_assertions)]
         println!("Primary expr symbol: {:?}", s);
+        #[cfg(debug_assertions)]
         println!("Primary expr TermType: {:?}", TermType::from_string(s));
 
         match TermType::from_string(s) {
@@ -228,9 +353,11 @@ impl Parser<'_> {
                 Ok(node)
             }
             Some(TermType::OPERATION(Operations::LBRACKET)) => {
+                #[cfg(debug_assertions)]
                 println!("Starting working on bracket");
                 self.expr.next();
                 node = self.math_expr()?;
+                #[cfg(debug_assertions)]
                 println!("Symbol after math_expr in brackets: {:?}", self.expr.peek());
                 if let Some(rbracket) = self.expr.peek() {
                     match Operations::from_string(rbracket) {
@@ -245,6 +372,7 @@ impl Parser<'_> {
                 }
             }
             _ => {
+                #[cfg(debug_assertions)]
                 println!("Haven't found symbol");
                 Err("Expected number, identifier or opening bracket, found something else".into())
             }
@@ -252,6 +380,7 @@ impl Parser<'_> {
     }
 
     fn add_sign(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to add-sign");
         let s = self.expr.peek().ok_or("Expected + or - signs. None of them were found")?;
 
@@ -273,6 +402,7 @@ impl Parser<'_> {
     }
 
     fn multiplier_sign(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to multiplier-sign");
         let s = self.expr.peek().ok_or("Expected *, / or %  signs. None of them were found")?;
 
@@ -300,6 +430,7 @@ impl Parser<'_> {
     }
 
     fn equality_sign(&mut self) -> Result<Box<SyntaxTree>, String> {
+        #[cfg(debug_assertions)]
         println!("Entered to equality-sign");
         let s = self.expr.peek().ok_or("Expected <, <=, =, >=, >, <> signs. None of them were found")?;
 
